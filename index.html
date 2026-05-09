@@ -22,42 +22,43 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">กลุ่มที่ดิน</label>
-                    <select id="groupFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white focus:ring-2 focus:ring-blue-400">
+                    <select id="groupFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white focus:ring-2 focus:ring-blue-400 outline-none">
                         <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">ประเภท</label>
-                    <select id="typeFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white focus:ring-2 focus:ring-blue-400">
+                    <select id="typeFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white focus:ring-2 focus:ring-blue-400 outline-none">
                         <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
                 <button onclick="resetFilters()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 py-2 rounded font-semibold transition">ล้างตัวกรอง</button>
+                <div id="status" class="text-xs text-blue-300 mt-4">กำลังโหลดข้อมูล...</div>
             </div>
         </div>
 
         <div class="flex-1 p-8">
             <header class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">สรุปความแตกต่างราคาตลาด</h1>
-                <p class="text-gray-500">ข้อมูลจากไฟล์ data.csv ใน Repository</p>
+                <p class="text-gray-500">สำนักงานที่ดินเมืองยะลา</p>
             </header>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div class="card p-6 border-l-4 border-blue-600">
                     <p class="text-sm text-gray-500 font-bold uppercase">จำนวนทั้งหมด</p>
-                    <h3 id="totalCount" class="text-3xl font-bold text-gray-800">-</h3>
+                    <h3 id="totalCount" class="text-3xl font-bold text-gray-800">0</h3>
                 </div>
                 <div class="card p-6 border-l-4 border-green-500">
                     <p class="text-sm text-gray-500 font-bold uppercase">ค่าเฉลี่ย % แตกต่าง</p>
-                    <h3 id="avgDiff" class="text-3xl font-bold text-gray-800">-</h3>
+                    <h3 id="avgDiff" class="text-3xl font-bold text-gray-800">0%</h3>
                 </div>
                 <div class="card p-6 border-l-4 border-yellow-500">
                     <p class="text-sm text-gray-500 font-bold uppercase">มัธยฐาน % แตกต่าง</p>
-                    <h3 id="medianDiff" class="text-3xl font-bold text-gray-800">-</h3>
+                    <h3 id="medianDiff" class="text-3xl font-bold text-gray-800">0%</h3>
                 </div>
                 <div class="card p-6 border-l-4 border-purple-500">
                     <p class="text-sm text-gray-500 font-bold uppercase">มัธยฐาน AS_Ratio</p>
-                    <h3 id="medianAS" class="text-3xl font-bold text-gray-800">-</h3>
+                    <h3 id="medianAS" class="text-3xl font-bold text-gray-800">0</h3>
                 </div>
             </div>
 
@@ -84,8 +85,7 @@
                                 <th class="px-6 py-4 text-sm font-bold text-gray-600 text-right">% แตกต่าง</th>
                             </tr>
                         </thead>
-                        <tbody id="dataTableBody" class="divide-y divide-gray-100">
-                            </tbody>
+                        <tbody id="dataTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
                     </table>
                 </div>
             </div>
@@ -95,35 +95,47 @@
     <script>
         let rawData = [];
         let charts = {};
+        // ใช้ URL ตรงจาก GitHub เพื่อแก้ปัญหา 404 บน GitHub Pages
+        const CSV_URL = 'https://raw.githubusercontent.com/akekalak12-glitch/akekalakch/main/data.csv';
 
-        // ฟังก์ชันดึงข้อมูลจากไฟล์ data.csv
         async function init() {
+            const status = document.getElementById('status');
             try {
-                const response = await fetch('data.csv');
-                if (!response.ok) throw new Error('Cannot find data.csv');
+                const response = await fetch(CSV_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
                 const csvData = await response.text();
                 
                 Papa.parse(csvData, {
                     header: true,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        // Mapping ข้อมูลให้ตรงกับหัวตารางในไฟล์ data.csv ของคุณ
-                        rawData = results.data.map(item => ({
-                            group: item["รหัสกลุ่มที่ดิน"],
-                            type: item["ประเภท"],
-                            tradePrice: parseFloat(String(item["ราคาซื้อขายในช่วง 0.6 - 0.9"]).replace(/,/g, '')),
-                            marketPrice: parseFloat(String(item["ราคาของหน่วย"]).replace(/,/g, '')),
-                            pctDiff: parseFloat(String(item["เปอร์เซนต์ความแตกต่างจากราคาตลาด"]).replace(/[%]/g, '')),
-                            asRatio: parseFloat(item["AS_Ratio_New"])
-                        })).filter(d => !isNaN(d.tradePrice));
+                        if (results.data.length === 0) {
+                            status.textContent = "⚠️ ไม่พบข้อมูลในไฟล์";
+                            return;
+                        }
+
+                        rawData = results.data.map(item => {
+                            // จัดการลบ comma และเครื่องหมาย % ออกจากข้อมูล
+                            const cleanNum = (val) => parseFloat(String(val || 0).replace(/,/g, '').replace(/%/g, ''));
+                            
+                            return {
+                                group: item["รหัสกลุ่มที่ดิน"] || "-",
+                                type: item["ประเภท"] || "-",
+                                tradePrice: cleanNum(item["ราคาซื้อขายในช่วง 0.6 - 0.9"]),
+                                marketPrice: cleanNum(item["ราคาของหน่วย"]),
+                                pctDiff: cleanNum(item["เปอร์เซนต์ความแตกต่างจากราคาตลาด"]),
+                                asRatio: cleanNum(item["AS_Ratio_New"])
+                            };
+                        }).filter(d => !isNaN(d.tradePrice) && d.tradePrice !== 0);
 
                         setupFilters();
                         updateDashboard(rawData);
+                        status.textContent = "✅ โหลดข้อมูลสำเร็จ";
                     }
                 });
             } catch (error) {
-                console.error("Error loading data:", error);
-                alert("ไม่สามารถโหลดไฟล์ data.csv ได้ กรุณาตรวจสอบว่าไฟล์อยู่ในโฟลเดอร์เดียวกันกับ index.html");
+                console.error("Fetch Error:", error);
+                status.textContent = "❌ โหลดข้อมูลไม่สำเร็จ";
             }
         }
 
@@ -150,13 +162,7 @@
         function applyFilters() {
             const gVal = document.getElementById('groupFilter').value;
             const tVal = document.getElementById('typeFilter').value;
-
-            const filtered = rawData.filter(d => {
-                const matchG = gVal === 'all' || d.group == gVal;
-                const matchT = tVal === 'all' || d.type == tVal;
-                return matchG && matchT;
-            });
-
+            const filtered = rawData.filter(d => (gVal === 'all' || d.group == gVal) && (tVal === 'all' || d.type === tVal));
             updateDashboard(filtered);
         }
 
@@ -167,22 +173,18 @@
         }
 
         function updateDashboard(data) {
-            if (data.length === 0) return;
-
-            // Update KPIs
             document.getElementById('totalCount').textContent = data.length.toLocaleString();
             
-            const avg = data.reduce((a, b) => a + b.pctDiff, 0) / data.length;
+            const avg = data.length > 0 ? data.reduce((a, b) => a + b.pctDiff, 0) / data.length : 0;
             document.getElementById('avgDiff').textContent = avg.toFixed(2) + '%';
 
             const sortedDiff = data.map(d => d.pctDiff).sort((a,b) => a-b);
-            const mid = Math.floor(sortedDiff.length / 2);
-            const median = sortedDiff.length % 2 !== 0 ? sortedDiff[mid] : (sortedDiff[mid - 1] + sortedDiff[mid]) / 2;
+            const median = sortedDiff.length > 0 ? (sortedDiff.length % 2 !== 0 ? sortedDiff[Math.floor(sortedDiff.length / 2)] : (sortedDiff[sortedDiff.length / 2 - 1] + sortedDiff[sortedDiff.length / 2]) / 2) : 0;
             document.getElementById('medianDiff').textContent = median.toFixed(2) + '%';
 
             const sortedAS = data.map(d => d.asRatio).sort((a,b) => a-b);
-            const medianAS = sortedAS[Math.floor(sortedAS.length / 2)];
-            document.getElementById('medianAS').textContent = medianAS.toFixed(4);
+            const medAS = sortedAS.length > 0 ? sortedAS[Math.floor(sortedAS.length / 2)] : 0;
+            document.getElementById('medianAS').textContent = medAS.toFixed(4);
 
             updateCharts(data);
             updateTable(data);
@@ -191,7 +193,6 @@
         function updateCharts(data) {
             const ctx1 = document.getElementById('priceChart').getContext('2d');
             const ctx2 = document.getElementById('diffChart').getContext('2d');
-
             if (charts.price) charts.price.destroy();
             if (charts.diff) charts.diff.destroy();
 
@@ -200,8 +201,8 @@
                 data: {
                     labels: data.map((_, i) => i + 1),
                     datasets: [
-                        { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#2563eb', tension: 0.3 },
-                        { label: 'ราคาตลาด', data: data.map(d => d.marketPrice), borderColor: '#d97706', tension: 0.3 }
+                        { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#2563eb', tension: 0.3, pointRadius: 2 },
+                        { label: 'ราคาตลาด', data: data.map(d => d.marketPrice), borderColor: '#d97706', tension: 0.3, pointRadius: 2 }
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
@@ -223,20 +224,17 @@
 
         function updateTable(data) {
             const tbody = document.getElementById('dataTableBody');
-            tbody.innerHTML = '';
-            data.forEach(d => {
-                const row = `<tr>
-                    <td class="px-6 py-4 text-sm text-gray-700">${d.group}</td>
-                    <td class="px-6 py-4 text-sm text-gray-700">${d.type}</td>
-                    <td class="px-6 py-4 text-sm text-gray-700 text-right">${d.tradePrice.toLocaleString()}</td>
-                    <td class="px-6 py-4 text-sm text-gray-700 text-right">${d.marketPrice.toLocaleString()}</td>
-                    <td class="px-6 py-4 text-sm font-bold text-right ${d.pctDiff > 30 ? 'text-red-600' : 'text-green-600'}">${d.pctDiff.toFixed(2)}%</td>
-                </tr>`;
-                tbody.insertAdjacentHTML('beforeend', row);
-            });
+            tbody.innerHTML = data.map(d => `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="px-6 py-3">${d.group}</td>
+                    <td class="px-6 py-3">${d.type}</td>
+                    <td class="px-6 py-3 text-right">${d.tradePrice.toLocaleString()}</td>
+                    <td class="px-6 py-3 text-right">${d.marketPrice.toLocaleString()}</td>
+                    <td class="px-6 py-3 text-right font-bold ${d.pctDiff > 30 ? 'text-red-600' : 'text-green-600'}">${d.pctDiff.toFixed(2)}%</td>
+                </tr>`).join('');
         }
 
-        init();
+        window.onload = init;
     </script>
 </body>
 </html>
