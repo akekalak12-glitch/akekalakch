@@ -36,9 +36,7 @@
                 
                 <div class="mt-8 p-3 bg-black bg-opacity-30 rounded-lg text-[10px] font-mono leading-tight">
                     <p class="text-gray-400 uppercase mb-1">ระบบตรวจสอบสถานะ:</p>
-                    <div id="debugLog" class="text-green-400 space-y-1">
-                        <div>> กำลังเตรียมระบบ...</div>
-                    </div>
+                    <div id="debugLog" class="text-green-400 space-y-1"></div>
                 </div>
             </div>
         </div>
@@ -47,11 +45,11 @@
             <header class="mb-8 flex justify-between items-start">
                 <div>
                     <h1 class="text-3xl font-bold text-gray-800">สรุปความแตกต่างราคาตลาด</h1>
-                    <p class="text-gray-500">สำนักงานที่ดินเมืองยะลา (Live Data)</p>
+                    <p class="text-gray-500">สำนักงานที่ดินเมืองยะลา</p>
                 </div>
                 <div id="loadingPulse" class="flex items-center space-x-2 text-blue-600 animate-pulse">
                     <div class="w-3 h-3 bg-blue-600 rounded-full"></div>
-                    <span class="text-sm font-bold">กำลังเชื่อมต่อ GitHub...</span>
+                    <span class="text-sm font-bold">กำลังเชื่อมต่อข้อมูล...</span>
                 </div>
             </header>
 
@@ -77,11 +75,11 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <div class="card p-6">
                     <h4 class="font-bold mb-4 text-gray-700">เปรียบเทียบราคาซื้อขายและราคาตลาด</h4>
-                    <div id="priceChartContainer" class="chart-container"><canvas id="priceChart"></canvas></div>
+                    <div class="chart-container"><canvas id="priceChart"></canvas></div>
                 </div>
                 <div class="card p-6">
                     <h4 class="font-bold mb-4 text-gray-700">เปอร์เซ็นต์ความแตกต่างรายแปลง</h4>
-                    <div id="diffChartContainer" class="chart-container"><canvas id="diffChart"></canvas></div>
+                    <div class="chart-container"><canvas id="diffChart"></canvas></div>
                 </div>
             </div>
 
@@ -122,98 +120,65 @@
 
         async function init() {
             try {
-                log("เริ่มดึงข้อมูลจาก GitHub...");
-                // เพิ่ม cache buster
-                const response = await fetch(CSV_URL + '?nocache=' + new Date().getTime());
+                log("🚀 เริ่มดึงข้อมูลแบบเจาะจงคอลัมน์");
                 
-                if (!response.ok) {
-                    throw new Error(`โหลดไฟล์ไม่ได้ (HTTP ${response.status})`);
-                }
+                // ใช้ Text ตรงๆ เพื่อหลีกเลี่ยงปัญหา TextDecoder ทำไฟล์พัง
+                const response = await fetch(CSV_URL + '?v=' + Date.now());
+                if (!response.ok) throw new Error(`เข้าถึงไฟล์ไม่ได้ (${response.status})`);
                 
-                log("เชื่อมต่อไฟล์สำเร็จ กำลังอ่านเนื้อหา...");
-                const arrayBuffer = await response.arrayBuffer();
-                
-                // ลองถอดรหัสทั้ง UTF-8 และ Windows-874
-                let decoder = new TextDecoder('utf-8');
-                let text = decoder.decode(arrayBuffer);
-                
-                // ถ้าเจอตัวยึกยือในหัวตาราง ให้สลับไปใช้ Windows-874 (สำหรับไฟล์จาก Excel ไทย)
-                if (text.includes('')) {
-                    log("ตรวจพบปัญหา Encoding สลับไปใช้ Windows-874...");
-                    decoder = new TextDecoder('windows-874');
-                    text = decoder.decode(arrayBuffer);
-                }
+                const csvText = await response.text();
+                log("✅ อ่านข้อมูลสำเร็จ เริ่มแปลงไฟล์...");
 
-                log("กำลังวิเคราะห์โครงสร้าง CSV...");
-                Papa.parse(text, {
-                    header: true,
+                Papa.parse(csvText, {
+                    header: false, // ปิด Header เพื่อใช้วิธีนับคอลัมน์แทน!
                     skipEmptyLines: true,
                     complete: function(results) {
-                        log(`ดึงข้อมูลดิบได้ ${results.data.length} แถว`);
-                        
-                        if (results.data.length === 0) {
-                            throw new Error("ไฟล์ CSV ไม่มีข้อมูลข้างใน");
-                        }
+                        const rows = results.data;
+                        log(`📊 ดึงข้อมูลได้ทั้งหมด ${rows.length} แถว (รวมหัวตาราง)`);
 
-                        // ตรวจสอบชื่อคอลัมน์จริงที่ระบบเห็น
-                        const firstRowKeys = Object.keys(results.data[0]);
-                        log(`คอลัมน์ที่พบ: ${firstRowKeys.length} ช่อง`);
+                        if (rows.length <= 1) throw new Error("ไฟล์ว่างเปล่า");
 
-                        // ฟังก์ชันช่วยหาคอลัมน์แบบยืดหยุ่น (ไม่สนใจเว้นวรรค)
-                        const findKey = (keywords) => {
-                            return firstRowKeys.find(k => keywords.some(kw => k.trim().includes(kw)));
-                        };
+                        // ตัดแถวที่ 0 (หัวตาราง) ทิ้งไปเลย เอาแต่เนื้อหา
+                        const dataRows = rows.slice(1);
 
-                        const keys = {
-                            group: findKey(["รหัสกลุ่มที่ดิน", "กลุ่ม"]),
-                            type: findKey(["ประเภท"]),
-                            trade: findKey(["ราคาซื้อขายในช่วง 0.6 - 0.9", "ซื้อขาย"]),
-                            market: findKey(["ราคาของหน่วย", "ตลาด"]),
-                            diff: findKey(["ความแตกต่างจากราคาตลาด", "แตกต่าง"]),
-                            ratio: findKey(["AS_Ratio_New", "Ratio"])
-                        };
-
-                        // แสดงสถานะการหาคอลัมน์
-                        Object.entries(keys).forEach(([k, v]) => {
-                            if (!v) log(`⚠️ หาคอลัมน์ '${k}' ไม่พบ!`, true);
-                        });
-
-                        rawData = results.data.map((item, index) => {
-                            const clean = (val) => {
-                                if (val === undefined || val === null) return 0;
+                        rawData = dataRows.map(row => {
+                            const cleanNum = (val) => {
+                                if (!val) return 0;
                                 return parseFloat(String(val).replace(/,/g, '').replace(/%/g, '').trim()) || 0;
                             };
 
+                            // ชี้เป้าตำแหน่งคอลัมน์โดยตรงจากไฟล์ที่คุณส่งมา
+                            // [2] = รหัสกลุ่มที่ดิน, [7] = ประเภท, [3] = ราคาซื้อขาย, [5] = ราคาของหน่วย, [10] = %แตกต่าง, [9] = AS_Ratio
                             return {
-                                group: item[keys.group] || "-",
-                                type: item[keys.type] || "-",
-                                tradePrice: clean(item[keys.trade]),
-                                marketPrice: clean(item[keys.market]),
-                                pctDiff: clean(item[keys.diff]),
-                                asRatio: clean(item[keys.ratio])
+                                group: row[2] ? String(row[2]).trim() : "-",
+                                type: row[7] ? String(row[7]).trim() : "-",
+                                tradePrice: cleanNum(row[3]),
+                                marketPrice: cleanNum(row[5]),
+                                pctDiff: cleanNum(row[10]),
+                                asRatio: cleanNum(row[9])
                             };
-                        }).filter(d => d.tradePrice > 0 || d.marketPrice > 0);
+                        }).filter(d => d.tradePrice > 0 || d.marketPrice > 0); // กรองเฉพาะที่มีตัวเลข
 
-                        log(`กรองข้อมูลสำเร็จ เหลือ ${rawData.length} รายการใช้งานได้`);
-                        
+                        log(`✅ กรองสำเร็จ เหลือใช้งาน ${rawData.length} รายการ`);
+
                         if (rawData.length > 0) {
                             document.getElementById('loadingPulse').classList.add('hidden');
                             setupFilters();
                             updateDashboard(rawData);
-                            log("✅ ทุกระบบพร้อมทำงาน!");
+                            log("🎉 กราฟและตารางพร้อมทำงาน!");
                         } else {
-                            log("❌ ข้อมูลหายไประหว่างการกรอง!", true);
+                            throw new Error("ไม่มีข้อมูลตัวเลขในไฟล์");
                         }
                     }
                 });
             } catch (error) {
-                log(`ERROR: ${error.message}`, true);
+                log(`❌ ${error.message}`, true);
                 document.getElementById('loadingPulse').innerHTML = `<span class="text-red-500 font-bold">❌ ${error.message}</span>`;
             }
         }
 
         function setupFilters() {
-            const groups = [...new Set(rawData.map(d => d.group))].sort();
+            const groups = [...new Set(rawData.map(d => d.group))].sort((a,b) => String(a).localeCompare(String(b)));
             const types = [...new Set(rawData.map(d => d.type))].sort();
             
             const gFilter = document.getElementById('groupFilter');
