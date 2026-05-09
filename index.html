@@ -3,93 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard ความแตกต่างราคาตลาด v2</title>
+    <title>Executive Dashboard - รายงานวิเคราะห์ราคาที่ดิน</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .chart-container { position: relative; height: 350px; width: 100%; }
-        .sidebar { background: #1a365d; color: white; }
+        body { font-family: 'Sarabun', sans-serif; background-color: #f4f7fa; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .sidebar { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); color: white; }
+        .stat-value { letter-spacing: -0.025em; }
+        .chart-container { position: relative; height: 380px; width: 100%; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div class="flex flex-col md:flex-row min-h-screen">
-        <div class="sidebar w-full md:w-72 p-6 shrink-0">
-            <h2 class="text-2xl font-bold mb-8 border-b border-blue-800 pb-4">Dashboard</h2>
-            <div class="space-y-5">
+<body class="text-slate-800">
+    <div class="flex flex-col lg:flex-row min-h-screen">
+        <aside class="sidebar w-full lg:w-80 p-8 shrink-0 shadow-2xl">
+            <div class="flex items-center space-x-3 mb-10 pb-6 border-b border-slate-700">
+                <div class="bg-blue-500 p-2 rounded-lg shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <h2 class="text-xl font-bold tracking-tight">LAND ANALYTICS</h2>
+            </div>
+
+            <div class="space-y-6">
                 <div>
-                    <label class="block text-sm font-medium mb-1 opacity-80">สำนักงานที่ดิน</label>
-                    <select id="officeFilter" onchange="applyFilters()" class="w-full p-2.5 rounded bg-blue-900 border-none text-white outline-none ring-1 ring-blue-700">
-                        <option value="all">ทั้งหมด</option>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">พื้นที่จังหวัด</label>
+                    <select id="provinceFilter" onchange="applyFilters()" class="w-full bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <option value="all">ทุกจังหวัด</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1 opacity-80">กลุ่มที่ดิน</label>
-                    <select id="groupFilter" onchange="applyFilters()" class="w-full p-2.5 rounded bg-blue-900 border-none text-white outline-none ring-1 ring-blue-700">
-                        <option value="all">ทั้งหมด</option>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">สำนักงานที่ดิน</label>
+                    <select id="officeFilter" onchange="applyFilters()" class="w-full bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <option value="all">ทุกสำนักงาน</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1 opacity-80">ประเภท</label>
-                    <select id="typeFilter" onchange="applyFilters()" class="w-full p-2.5 rounded bg-blue-900 border-none text-white outline-none ring-1 ring-blue-700">
-                        <option value="all">ทั้งหมด</option>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">กลุ่มที่ดิน</label>
+                    <select id="groupFilter" onchange="applyFilters()" class="w-full bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <option value="all">ทุกกลุ่ม</option>
                     </select>
                 </div>
-                <button onclick="resetFilters()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 py-2.5 rounded font-bold shadow-lg transition">✕ ล้างตัวกรอง</button>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">ประเภทที่ดิน</label>
+                    <select id="typeFilter" onchange="applyFilters()" class="w-full bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <option value="all">ทุกประเภท</option>
+                    </select>
+                </div>
+
+                <button onclick="resetFilters()" class="w-full mt-6 bg-slate-700 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95">✕ ล้างค่าตัวกรอง</button>
                 
-                <div class="mt-8 p-4 bg-black bg-opacity-30 rounded-lg text-xs font-mono">
-                    <p class="text-blue-300 mb-2 font-bold uppercase tracking-widest">Status Log</p>
-                    <div id="debugLog" class="text-emerald-400 space-y-1 overflow-y-auto max-h-32"></div>
+                <div class="mt-10 p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-2">System Logs</p>
+                    <div id="debugLog" class="text-[11px] text-blue-400 font-mono space-y-1 overflow-y-auto max-h-40"></div>
                 </div>
             </div>
-        </div>
+        </aside>
 
-        <div class="flex-1 p-8 overflow-x-hidden">
-            <header class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-800">วิเคราะห์ความใกล้เคียงราคาตลาด</h1>
-                <p class="text-gray-500 mt-1">สำนักงานที่ดินเมืองยะลา · ข้อมูลรายหน่วยที่ดิน</p>
+        <main class="flex-1 p-6 lg:p-10">
+            <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">สรุปความแตกต่างราคาตลาด</h1>
+                    <p class="text-slate-500 font-medium">ระบบวิเคราะห์เปรียบเทียบข้อมูลราคาประเมินและราคาซื้อขายจริง</p>
+                </div>
+                <div id="dataBadge" class="bg-blue-50 text-blue-700 px-4 py-2 rounded-full font-bold text-sm border border-blue-100 shadow-sm">
+                    กำลังดึงข้อมูล...
+                </div>
             </header>
 
-            <div id="kpiContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+            <div id="kpiGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                 </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div class="card p-6">
-                    <h4 class="font-bold mb-4 text-gray-700 border-l-4 border-blue-600 pl-3">เปรียบเทียบราคาประเมินใหม่ และ ราคาซื้อขาย</h4>
+            <section class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
+                <div class="xl:col-span-2 card p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h4 class="font-bold text-lg text-slate-800 border-l-4 border-blue-600 pl-4">เปรียบเทียบราคาประเมินใหม่ และ ราคาซื้อขาย</h4>
+                        <div class="flex space-x-4 text-xs font-bold uppercase text-slate-400">
+                            <span class="flex items-center"><span class="w-3 h-3 bg-blue-600 rounded-full mr-2"></span>ประเมินใหม่</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>ซื้อขายจริง</span>
+                        </div>
+                    </div>
                     <div class="chart-container"><canvas id="priceChart"></canvas></div>
                 </div>
-                <div class="card p-6">
-                    <h4 class="font-bold mb-4 text-gray-700 border-l-4 border-emerald-500 pl-3">% ความแตกต่าง แยกตามรายหน่วยที่ดิน</h4>
+
+                <div class="card p-8 bg-slate-900 text-white">
+                    <h4 class="font-bold text-lg mb-6 border-l-4 border-blue-400 pl-4">สถิติเชิงลึก (Detailed Stats)</h4>
+                    <div id="detailedStats" class="space-y-6">
+                        </div>
+                </div>
+            </section>
+
+            <div class="grid grid-cols-1 gap-8 mb-10">
+                <div class="card p-8">
+                    <h4 class="font-bold text-lg text-slate-800 mb-6 border-l-4 border-emerald-500 pl-4">% ความแตกต่าง รายหน่วยที่ดิน</h4>
                     <div class="chart-container"><canvas id="diffChart"></canvas></div>
                 </div>
             </div>
 
             <div class="card overflow-hidden">
-                <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                    <h4 class="font-bold text-gray-700">ข้อมูลตารางทั้งหมด</h4>
-                    <span id="recordCount" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold"></span>
+                <div class="px-8 py-5 border-b bg-slate-50 flex justify-between items-center">
+                    <h4 class="font-bold text-slate-800">รายละเอียดรายแปลงทั้งหมด</h4>
+                    <button onclick="exportCSV()" class="text-xs bg-white border border-slate-200 hover:bg-slate-100 px-4 py-2 rounded-lg font-bold shadow-sm transition">💾 Export CSV</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
-                        <thead class="bg-gray-800 text-white text-xs uppercase">
+                        <thead class="bg-slate-800 text-slate-200 text-[11px] font-bold uppercase tracking-wider">
                             <tr>
-                                <th class="px-6 py-4">กลุ่ม</th>
-                                <th class="px-6 py-4">สำนักงาน</th>
-                                <th class="px-6 py-4">หน่วยที่ดิน</th>
-                                <th class="px-6 py-4">ประเภท</th>
-                                <th class="px-6 py-4 text-right">ราคาซื้อขาย</th>
-                                <th class="px-6 py-4 text-right">ราคาประเมินใหม่</th>
-                                <th class="px-6 py-4 text-right">% ต่าง</th>
+                                <th class="px-8 py-4">จังหวัด</th>
+                                <th class="px-8 py-4">สำนักงาน</th>
+                                <th class="px-8 py-4">กลุ่ม</th>
+                                <th class="px-8 py-4">หน่วย</th>
+                                <th class="px-8 py-4 text-right">ราคาซื้อขาย</th>
+                                <th class="px-8 py-4 text-right">ประเมินใหม่</th>
+                                <th class="px-8 py-4 text-right">% ต่าง</th>
                             </tr>
                         </thead>
-                        <tbody id="dataTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
+                        <tbody id="dataTableBody" class="divide-y divide-slate-100 text-sm">
+                            </tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script>
@@ -104,7 +144,7 @@
         }
 
         async function init() {
-            log("กำลังเชื่อมต่อไฟล์...");
+            log("📡 เชื่อมต่อฐานข้อมูล GitHub...");
             try {
                 const response = await fetch(CSV_URL + '?v=' + Date.now());
                 const csvText = await response.text();
@@ -113,12 +153,13 @@
                     header: false,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        log(`โหลดได้ ${results.data.length} แถว`);
-                        const dataRows = results.data.slice(1);
+                        log(`📂 พบข้อมูลทั้งหมด ${results.data.length - 1} รายการ`);
+                        const rows = results.data.slice(1);
 
-                        rawData = dataRows.map(row => {
+                        rawData = rows.map(row => {
                             const clean = (val) => parseFloat(String(val || 0).replace(/,/g, '').replace(/%/g, '').trim()) || 0;
                             return {
+                                province: row[0] ? String(row[0]).trim() : "-",
                                 office: row[1] ? String(row[1]).trim() : "-",
                                 group: row[2] ? String(row[2]).trim() : "-",
                                 tradePrice: clean(row[3]),
@@ -131,34 +172,36 @@
                             };
                         }).filter(d => d.tradePrice > 0 || d.marketPrice > 0);
 
-                        log("วิเคราะห์ข้อมูลสำเร็จ");
                         setupFilters();
                         applyFilters();
                     }
                 });
-            } catch (e) { log("เกิดข้อผิดพลาด: " + e.message); }
+            } catch (e) { log("❌ ข้อผิดพลาด: " + e.message); }
         }
 
         function setupFilters() {
             const getUnique = (key) => [...new Set(rawData.map(d => d[key]))].sort();
             
-            const populate = (id, list, label) => {
+            const populate = (id, list) => {
                 const el = document.getElementById(id);
-                el.innerHTML = '<option value="all">ทั้งหมด</option>';
-                list.forEach(v => el.innerHTML += `<option value="${v}">${label} ${v}</option>`);
+                el.innerHTML = `<option value="all">${el.options[0].text}</option>`;
+                list.forEach(v => { if(v && v !== "-") el.innerHTML += `<option value="${v}">${v}</option>`; });
             };
 
-            populate('officeFilter', getUnique('office'), '');
-            populate('groupFilter', getUnique('group'), 'กลุ่ม');
-            populate('typeFilter', getUnique('type'), '');
+            populate('provinceFilter', getUnique('province'));
+            populate('officeFilter', getUnique('office'));
+            populate('groupFilter', getUnique('group'));
+            populate('typeFilter', getUnique('type'));
         }
 
         function applyFilters() {
+            const province = document.getElementById('provinceFilter').value;
             const office = document.getElementById('officeFilter').value;
             const group = document.getElementById('groupFilter').value;
             const type = document.getElementById('typeFilter').value;
 
             const filtered = rawData.filter(d => 
+                (province === 'all' || d.province === province) &&
                 (office === 'all' || d.office === office) &&
                 (group === 'all' || d.group == group) &&
                 (type === 'all' || d.type === type)
@@ -181,26 +224,51 @@
 
         function updateDashboard(data) {
             const mean = (arr) => arr.length > 0 ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
-            const pctDiffs = data.map(d => d.pctDiff);
-            const asRatios = data.map(d => d.asRatio);
+            const fmt = (n, d=2) => n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+            
+            const diffs = data.map(d => d.pctDiff);
+            const ratios = data.map(d => d.asRatio);
+            const trades = data.map(d => d.tradePrice);
+            const assessed = data.map(d => d.newAssessed);
 
-            // KPI Cards Configuration
-            const kpis = [
-                { title: "จำนวนแปลง", value: data.length.toLocaleString(), unit: "แปลง", color: "blue" },
-                { title: "% ต่าง (Mean)", value: mean(pctDiffs).toFixed(2), unit: "%", color: "green" },
-                { title: "% ต่าง (Median)", value: calculateMedian(pctDiffs).toFixed(2), unit: "%", color: "yellow" },
-                { title: "AS Ratio (Mean)", value: mean(asRatios).toFixed(4), unit: "", color: "purple" },
-                { title: "AS Ratio (Median)", value: calculateMedian(asRatios).toFixed(4), unit: "", color: "indigo" }
+            document.getElementById('dataBadge').textContent = `แสดง ${data.length} แปลง`;
+
+            // KPI CARDS
+            const kpiItems = [
+                { label: "เฉลี่ย % ส่วนต่าง", val: mean(diffs).toFixed(2) + "%", icon: "📊", color: "blue" },
+                { label: "มัธยฐาน % ส่วนต่าง", val: calculateMedian(diffs).toFixed(2) + "%", icon: "📍", color: "emerald" },
+                { label: "เฉลี่ย AS Ratio", val: mean(ratios).toFixed(4), icon: "⚖️", color: "indigo" },
+                { label: "มัธยฐาน AS Ratio", val: calculateMedian(ratios).toFixed(4), icon: "🎯", color: "purple" }
             ];
 
-            document.getElementById('kpiContainer').innerHTML = kpis.map(k => `
-                <div class="card p-5 border-l-4 border-${k.color}-500">
-                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">${k.title}</p>
-                    <h3 class="text-2xl font-bold text-gray-800 mt-1">${k.value}<span class="text-sm ml-1 font-normal text-gray-400">${k.unit}</span></h3>
+            document.getElementById('kpiGrid').innerHTML = kpiItems.map(k => `
+                <div class="card p-6 border-t-4 border-${k.color}-500">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">${k.label}</span>
+                        <span>${k.icon}</span>
+                    </div>
+                    <div class="text-2xl font-black text-slate-800 stat-value">${k.val}</div>
                 </div>
             `).join('');
 
-            document.getElementById('recordCount').textContent = `แสดง ${data.length} รายการ`;
+            // DETAILED STATS (Image 2 style)
+            const stats = [
+                { label: "ค่า % ต่างสูงสุด (Max)", val: Math.max(...diffs, 0).toFixed(2) + "%", sub: "ส่วนต่างที่สูงที่สุด" },
+                { label: "ค่า % ต่างต่ำสุด (Min)", val: Math.min(...diffs, 0).toFixed(2) + "%", sub: "ส่วนต่างที่ต่ำที่สุด" },
+                { label: "ราคาซื้อขายเฉลี่ย", val: fmt(mean(trades), 0), sub: "บาท / รายการ" },
+                { label: "ราคาประเมินใหม่เฉลี่ย", val: fmt(mean(assessed), 0), sub: "บาท / รายการ" },
+                { label: "ความถูกต้องของข้อมูล", val: (100 - mean(diffs)).toFixed(2) + "%", sub: "ความใกล้เคียงราคาตลาด" }
+            ];
+
+            document.getElementById('detailedStats').innerHTML = stats.map(s => `
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <div>
+                        <p class="text-xs font-bold text-blue-400 uppercase">${s.label}</p>
+                        <p class="text-[10px] text-slate-500">${s.sub}</p>
+                    </div>
+                    <div class="text-lg font-bold">${s.val}</div>
+                </div>
+            `).join('');
 
             updateCharts(data);
             updateTable(data);
@@ -209,37 +277,30 @@
         function updateCharts(data) {
             const ctx1 = document.getElementById('priceChart').getContext('2d');
             const ctx2 = document.getElementById('diffChart').getContext('2d');
-            
             if (charts.price) charts.price.destroy();
             if (charts.diff) charts.diff.destroy();
 
-            // Chart 1: ประเมินใหม่ vs ซื้อขาย
             charts.price = new Chart(ctx1, {
                 type: 'line',
                 data: {
-                    labels: data.map(d => d.landUnit), // แกน X เป็นหน่วยที่ดิน
+                    labels: data.map(d => "หน่วย " + d.landUnit),
                     datasets: [
-                        { label: 'ราคาประเมินใหม่', data: data.map(d => d.newAssessed), borderColor: '#2563eb', backgroundColor: '#2563eb22', fill: true, tension: 0.3 },
-                        { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#dc2626', tension: 0.3 }
+                        { label: 'ราคาประเมินใหม่', data: data.map(d => d.newAssessed), borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true, tension: 0.4, pointRadius: 2 },
+                        { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#ef4444', borderDash: [5, 5], tension: 0.1, pointRadius: 2 }
                     ]
                 },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    plugins: { tooltip: { mode: 'index', intersect: false } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
 
-            // Chart 2: % แตกต่าง แยกตามหน่วยที่ดิน
             charts.diff = new Chart(ctx2, {
                 type: 'bar',
                 data: {
-                    labels: data.map(d => d.landUnit),
+                    labels: data.map(d => "หน่วย " + d.landUnit),
                     datasets: [{
-                        label: '% ความแตกต่าง',
+                        label: '% ความต่าง',
                         data: data.map(d => d.pctDiff),
                         backgroundColor: data.map(d => d.pctDiff > 30 ? '#ef4444' : '#10b981'),
-                        borderRadius: 4
+                        borderRadius: 6
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
@@ -249,15 +310,27 @@
         function updateTable(data) {
             const tbody = document.getElementById('dataTableBody');
             tbody.innerHTML = data.map(d => `
-                <tr class="hover:bg-blue-50 transition">
-                    <td class="px-6 py-3 font-medium">${d.group}</td>
-                    <td class="px-6 py-3">${d.office}</td>
-                    <td class="px-6 py-3">หน่วย ${d.landUnit}</td>
-                    <td class="px-6 py-3">${d.type}</td>
-                    <td class="px-6 py-3 text-right font-mono">${d.tradePrice.toLocaleString()}</td>
-                    <td class="px-6 py-3 text-right font-mono">${d.newAssessed.toLocaleString()}</td>
-                    <td class="px-6 py-3 text-right font-bold ${d.pctDiff > 30 ? 'text-red-600' : 'text-emerald-600'}">${d.pctDiff.toFixed(2)}%</td>
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-8 py-4 font-bold text-blue-600">${d.province}</td>
+                    <td class="px-8 py-4">${d.office}</td>
+                    <td class="px-8 py-4">${d.group}</td>
+                    <td class="px-8 py-4 font-mono text-xs">U-${d.landUnit}</td>
+                    <td class="px-8 py-4 text-right font-bold text-slate-700">${d.tradePrice.toLocaleString()}</td>
+                    <td class="px-8 py-4 text-right font-bold text-blue-700">${d.newAssessed.toLocaleString()}</td>
+                    <td class="px-8 py-4 text-right font-black ${d.pctDiff > 30 ? 'text-red-500' : 'text-emerald-500'}">${d.pctDiff.toFixed(2)}%</td>
                 </tr>`).join('');
+        }
+
+        function exportCSV() {
+            let csv = "\ufeffจังหวัด,สำนักงาน,กลุ่ม,หน่วย,ราคาซื้อขาย,ประเมินใหม่,%ต่าง\n";
+            rawData.forEach(d => {
+                csv += `${d.province},${d.office},${d.group},${d.landUnit},${d.tradePrice},${d.newAssessed},${d.pctDiff}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "land_valuation_report.csv");
+            link.click();
         }
 
         window.onload = init;
