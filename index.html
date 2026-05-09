@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard ความแตกต่างราคาตลาด</title>
+    <title>Dashboard ความแตกต่างราคาตลาด v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
@@ -11,93 +11,81 @@
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; }
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .chart-container { position: relative; height: 300px; width: 100%; }
+        .chart-container { position: relative; height: 350px; width: 100%; }
         .sidebar { background: #1a365d; color: white; }
     </style>
 </head>
 <body class="bg-gray-100">
     <div class="flex flex-col md:flex-row min-h-screen">
-        <div class="sidebar w-full md:w-64 p-6">
-            <h2 class="text-2xl font-bold mb-8">Dashboard</h2>
-            <div class="space-y-4">
+        <div class="sidebar w-full md:w-72 p-6 shrink-0">
+            <h2 class="text-2xl font-bold mb-8 border-b border-blue-800 pb-4">Dashboard</h2>
+            <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium mb-1">กลุ่มที่ดิน</label>
-                    <select id="groupFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white outline-none">
+                    <label class="block text-sm font-medium mb-1 opacity-80">สำนักงานที่ดิน</label>
+                    <select id="officeFilter" onchange="applyFilters()" class="w-full p-2.5 rounded bg-blue-900 border-none text-white outline-none ring-1 ring-blue-700">
                         <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">ประเภท</label>
-                    <select id="typeFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white outline-none">
+                    <label class="block text-sm font-medium mb-1 opacity-80">กลุ่มที่ดิน</label>
+                    <select id="groupFilter" onchange="applyFilters()" class="w-full p-2.5 rounded bg-blue-900 border-none text-white outline-none ring-1 ring-blue-700">
                         <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
-                <button onclick="resetFilters()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 py-2 rounded font-semibold transition">ล้างตัวกรอง</button>
+                <div>
+                    <label class="block text-sm font-medium mb-1 opacity-80">ประเภท</label>
+                    <select id="typeFilter" onchange="applyFilters()" class="w-full p-2.5 rounded bg-blue-900 border-none text-white outline-none ring-1 ring-blue-700">
+                        <option value="all">ทั้งหมด</option>
+                    </select>
+                </div>
+                <button onclick="resetFilters()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 py-2.5 rounded font-bold shadow-lg transition">✕ ล้างตัวกรอง</button>
                 
-                <div class="mt-8 p-3 bg-black bg-opacity-30 rounded-lg text-[10px] font-mono leading-tight">
-                    <p class="text-gray-400 uppercase mb-1">ระบบตรวจสอบสถานะ:</p>
-                    <div id="debugLog" class="text-green-400 space-y-1"></div>
+                <div class="mt-8 p-4 bg-black bg-opacity-30 rounded-lg text-xs font-mono">
+                    <p class="text-blue-300 mb-2 font-bold uppercase tracking-widest">Status Log</p>
+                    <div id="debugLog" class="text-emerald-400 space-y-1 overflow-y-auto max-h-32"></div>
                 </div>
             </div>
         </div>
 
-        <div class="flex-1 p-8">
-            <header class="mb-8 flex justify-between items-start">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-800">สรุปความแตกต่างราคาตลาด</h1>
-                    <p class="text-gray-500">สำนักงานที่ดินเมืองยะลา</p>
-                </div>
-                <div id="loadingPulse" class="flex items-center space-x-2 text-blue-600 animate-pulse">
-                    <div class="w-3 h-3 bg-blue-600 rounded-full"></div>
-                    <span class="text-sm font-bold">กำลังเชื่อมต่อข้อมูล...</span>
-                </div>
+        <div class="flex-1 p-8 overflow-x-hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">วิเคราะห์ความใกล้เคียงราคาตลาด</h1>
+                <p class="text-gray-500 mt-1">สำนักงานที่ดินเมืองยะลา · ข้อมูลรายหน่วยที่ดิน</p>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="card p-6 border-l-4 border-blue-600">
-                    <p class="text-sm text-gray-500 font-bold uppercase">จำนวนทั้งหมด</p>
-                    <h3 id="totalCount" class="text-3xl font-bold text-gray-800">0</h3>
+            <div id="kpiContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
                 </div>
-                <div class="card p-6 border-l-4 border-green-500">
-                    <p class="text-sm text-gray-500 font-bold uppercase">ค่าเฉลี่ย % แตกต่าง</p>
-                    <h3 id="avgDiff" class="text-3xl font-bold text-gray-800">0%</h3>
-                </div>
-                <div class="card p-6 border-l-4 border-yellow-500">
-                    <p class="text-sm text-gray-500 font-bold uppercase">มัธยฐาน % แตกต่าง</p>
-                    <h3 id="medianDiff" class="text-3xl font-bold text-gray-800">0%</h3>
-                </div>
-                <div class="card p-6 border-l-4 border-purple-500">
-                    <p class="text-sm text-gray-500 font-bold uppercase">มัธยฐาน AS_Ratio</p>
-                    <h3 id="medianAS" class="text-3xl font-bold text-gray-800">0</h3>
-                </div>
-            </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <div class="card p-6">
-                    <h4 class="font-bold mb-4 text-gray-700">เปรียบเทียบราคาซื้อขายและราคาตลาด</h4>
+                    <h4 class="font-bold mb-4 text-gray-700 border-l-4 border-blue-600 pl-3">เปรียบเทียบราคาประเมินใหม่ และ ราคาซื้อขาย</h4>
                     <div class="chart-container"><canvas id="priceChart"></canvas></div>
                 </div>
                 <div class="card p-6">
-                    <h4 class="font-bold mb-4 text-gray-700">เปอร์เซ็นต์ความแตกต่างรายแปลง</h4>
+                    <h4 class="font-bold mb-4 text-gray-700 border-l-4 border-emerald-500 pl-3">% ความแตกต่าง แยกตามรายหน่วยที่ดิน</h4>
                     <div class="chart-container"><canvas id="diffChart"></canvas></div>
                 </div>
             </div>
 
             <div class="card overflow-hidden">
+                <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                    <h4 class="font-bold text-gray-700">ข้อมูลตารางทั้งหมด</h4>
+                    <span id="recordCount" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold"></span>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
-                        <thead class="bg-gray-50 border-b">
+                        <thead class="bg-gray-800 text-white text-xs uppercase">
                             <tr>
-                                <th class="px-6 py-4 text-sm font-bold text-gray-600">กลุ่ม</th>
-                                <th class="px-6 py-4 text-sm font-bold text-gray-600">ประเภท</th>
-                                <th class="px-6 py-4 text-sm font-bold text-gray-600 text-right">ราคาซื้อขาย</th>
-                                <th class="px-6 py-4 text-sm font-bold text-gray-600 text-right">ราคาตลาด</th>
-                                <th class="px-6 py-4 text-sm font-bold text-gray-600 text-right">% แตกต่าง</th>
+                                <th class="px-6 py-4">กลุ่ม</th>
+                                <th class="px-6 py-4">สำนักงาน</th>
+                                <th class="px-6 py-4">หน่วยที่ดิน</th>
+                                <th class="px-6 py-4">ประเภท</th>
+                                <th class="px-6 py-4 text-right">ราคาซื้อขาย</th>
+                                <th class="px-6 py-4 text-right">ราคาประเมินใหม่</th>
+                                <th class="px-6 py-4 text-right">% ต่าง</th>
                             </tr>
                         </thead>
-                        <tbody id="dataTableBody" class="divide-y divide-gray-100 text-sm">
-                            <tr><td colspan="5" class="p-10 text-center text-gray-400 italic">รอการโหลดข้อมูล...</td></tr>
-                        </tbody>
+                        <tbody id="dataTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
                     </table>
                 </div>
             </div>
@@ -109,123 +97,110 @@
         let charts = {};
         const CSV_URL = 'https://raw.githubusercontent.com/akekalak12-glitch/akekalakch/main/data.csv';
 
-        function log(msg, isError = false) {
-            const container = document.getElementById('debugLog');
-            const div = document.createElement('div');
-            div.className = isError ? 'text-red-400' : 'text-green-400';
-            div.textContent = `> ${msg}`;
-            container.appendChild(div);
-            console.log(msg);
+        function log(msg) {
+            const el = document.getElementById('debugLog');
+            el.innerHTML += `<div>> ${msg}</div>`;
+            el.scrollTop = el.scrollHeight;
         }
 
         async function init() {
+            log("กำลังเชื่อมต่อไฟล์...");
             try {
-                log("🚀 เริ่มดึงข้อมูลแบบเจาะจงคอลัมน์");
-                
-                // ใช้ Text ตรงๆ เพื่อหลีกเลี่ยงปัญหา TextDecoder ทำไฟล์พัง
                 const response = await fetch(CSV_URL + '?v=' + Date.now());
-                if (!response.ok) throw new Error(`เข้าถึงไฟล์ไม่ได้ (${response.status})`);
-                
                 const csvText = await response.text();
-                log("✅ อ่านข้อมูลสำเร็จ เริ่มแปลงไฟล์...");
-
+                
                 Papa.parse(csvText, {
-                    header: false, // ปิด Header เพื่อใช้วิธีนับคอลัมน์แทน!
+                    header: false,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        const rows = results.data;
-                        log(`📊 ดึงข้อมูลได้ทั้งหมด ${rows.length} แถว (รวมหัวตาราง)`);
-
-                        if (rows.length <= 1) throw new Error("ไฟล์ว่างเปล่า");
-
-                        // ตัดแถวที่ 0 (หัวตาราง) ทิ้งไปเลย เอาแต่เนื้อหา
-                        const dataRows = rows.slice(1);
+                        log(`โหลดได้ ${results.data.length} แถว`);
+                        const dataRows = results.data.slice(1);
 
                         rawData = dataRows.map(row => {
-                            const cleanNum = (val) => {
-                                if (!val) return 0;
-                                return parseFloat(String(val).replace(/,/g, '').replace(/%/g, '').trim()) || 0;
-                            };
-
-                            // ชี้เป้าตำแหน่งคอลัมน์โดยตรงจากไฟล์ที่คุณส่งมา
-                            // [2] = รหัสกลุ่มที่ดิน, [7] = ประเภท, [3] = ราคาซื้อขาย, [5] = ราคาของหน่วย, [10] = %แตกต่าง, [9] = AS_Ratio
+                            const clean = (val) => parseFloat(String(val || 0).replace(/,/g, '').replace(/%/g, '').trim()) || 0;
                             return {
+                                office: row[1] ? String(row[1]).trim() : "-",
                                 group: row[2] ? String(row[2]).trim() : "-",
+                                tradePrice: clean(row[3]),
+                                landUnit: row[4] ? String(row[4]).trim() : "-",
+                                marketPrice: clean(row[5]),
                                 type: row[7] ? String(row[7]).trim() : "-",
-                                tradePrice: cleanNum(row[3]),
-                                marketPrice: cleanNum(row[5]),
-                                pctDiff: cleanNum(row[10]),
-                                asRatio: cleanNum(row[9])
+                                newAssessed: clean(row[8]),
+                                asRatio: clean(row[9]),
+                                pctDiff: clean(row[10])
                             };
-                        }).filter(d => d.tradePrice > 0 || d.marketPrice > 0); // กรองเฉพาะที่มีตัวเลข
+                        }).filter(d => d.tradePrice > 0 || d.marketPrice > 0);
 
-                        log(`✅ กรองสำเร็จ เหลือใช้งาน ${rawData.length} รายการ`);
-
-                        if (rawData.length > 0) {
-                            document.getElementById('loadingPulse').classList.add('hidden');
-                            setupFilters();
-                            updateDashboard(rawData);
-                            log("🎉 กราฟและตารางพร้อมทำงาน!");
-                        } else {
-                            throw new Error("ไม่มีข้อมูลตัวเลขในไฟล์");
-                        }
+                        log("วิเคราะห์ข้อมูลสำเร็จ");
+                        setupFilters();
+                        applyFilters();
                     }
                 });
-            } catch (error) {
-                log(`❌ ${error.message}`, true);
-                document.getElementById('loadingPulse').innerHTML = `<span class="text-red-500 font-bold">❌ ${error.message}</span>`;
-            }
+            } catch (e) { log("เกิดข้อผิดพลาด: " + e.message); }
         }
 
         function setupFilters() {
-            const groups = [...new Set(rawData.map(d => d.group))].sort((a,b) => String(a).localeCompare(String(b)));
-            const types = [...new Set(rawData.map(d => d.type))].sort();
+            const getUnique = (key) => [...new Set(rawData.map(d => d[key]))].sort();
             
-            const gFilter = document.getElementById('groupFilter');
-            const tFilter = document.getElementById('typeFilter');
-            
-            gFilter.innerHTML = '<option value="all">ทั้งหมด</option>';
-            tFilter.innerHTML = '<option value="all">ทั้งหมด</option>';
+            const populate = (id, list, label) => {
+                const el = document.getElementById(id);
+                el.innerHTML = '<option value="all">ทั้งหมด</option>';
+                list.forEach(v => el.innerHTML += `<option value="${v}">${label} ${v}</option>`);
+            };
 
-            groups.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g; opt.textContent = `กลุ่ม ${g}`;
-                gFilter.appendChild(opt);
-            });
-
-            types.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t; opt.textContent = t;
-                tFilter.appendChild(opt);
-            });
+            populate('officeFilter', getUnique('office'), '');
+            populate('groupFilter', getUnique('group'), 'กลุ่ม');
+            populate('typeFilter', getUnique('type'), '');
         }
 
         function applyFilters() {
-            const gVal = document.getElementById('groupFilter').value;
-            const tVal = document.getElementById('typeFilter').value;
-            const filtered = rawData.filter(d => (gVal === 'all' || String(d.group) === gVal) && (tVal === 'all' || String(d.type) === tVal));
+            const office = document.getElementById('officeFilter').value;
+            const group = document.getElementById('groupFilter').value;
+            const type = document.getElementById('typeFilter').value;
+
+            const filtered = rawData.filter(d => 
+                (office === 'all' || d.office === office) &&
+                (group === 'all' || d.group == group) &&
+                (type === 'all' || d.type === type)
+            );
+
             updateDashboard(filtered);
         }
 
         function resetFilters() {
-            document.getElementById('groupFilter').value = 'all';
-            document.getElementById('typeFilter').value = 'all';
-            updateDashboard(rawData);
+            document.querySelectorAll('select').forEach(s => s.value = 'all');
+            applyFilters();
+        }
+
+        function calculateMedian(arr) {
+            if (arr.length === 0) return 0;
+            const sorted = [...arr].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
         }
 
         function updateDashboard(data) {
-            document.getElementById('totalCount').textContent = data.length.toLocaleString();
-            
-            const avg = data.length > 0 ? data.reduce((a, b) => a + b.pctDiff, 0) / data.length : 0;
-            document.getElementById('avgDiff').textContent = avg.toFixed(2) + '%';
+            const mean = (arr) => arr.length > 0 ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
+            const pctDiffs = data.map(d => d.pctDiff);
+            const asRatios = data.map(d => d.asRatio);
 
-            const sortedDiff = data.map(d => d.pctDiff).sort((a,b) => a-b);
-            const median = sortedDiff.length > 0 ? (sortedDiff.length % 2 !== 0 ? sortedDiff[Math.floor(sortedDiff.length / 2)] : (sortedDiff[sortedDiff.length / 2 - 1] + sortedDiff[sortedDiff.length / 2]) / 2) : 0;
-            document.getElementById('medianDiff').textContent = median.toFixed(2) + '%';
+            // KPI Cards Configuration
+            const kpis = [
+                { title: "จำนวนแปลง", value: data.length.toLocaleString(), unit: "แปลง", color: "blue" },
+                { title: "% ต่าง (Mean)", value: mean(pctDiffs).toFixed(2), unit: "%", color: "green" },
+                { title: "% ต่าง (Median)", value: calculateMedian(pctDiffs).toFixed(2), unit: "%", color: "yellow" },
+                { title: "AS Ratio (Mean)", value: mean(asRatios).toFixed(4), unit: "", color: "purple" },
+                { title: "AS Ratio (Median)", value: calculateMedian(asRatios).toFixed(4), unit: "", color: "indigo" }
+            ];
 
-            const sortedAS = data.map(d => d.asRatio).sort((a,b) => a-b);
-            const medAS = sortedAS.length > 0 ? sortedAS[Math.floor(sortedAS.length / 2)] : 0;
-            document.getElementById('medianAS').textContent = medAS.toFixed(4);
+            document.getElementById('kpiContainer').innerHTML = kpis.map(k => `
+                <div class="card p-5 border-l-4 border-${k.color}-500">
+                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">${k.title}</p>
+                    <h3 class="text-2xl font-bold text-gray-800 mt-1">${k.value}<span class="text-sm ml-1 font-normal text-gray-400">${k.unit}</span></h3>
+                </div>
+            `).join('');
+
+            document.getElementById('recordCount').textContent = `แสดง ${data.length} รายการ`;
 
             updateCharts(data);
             updateTable(data);
@@ -234,29 +209,37 @@
         function updateCharts(data) {
             const ctx1 = document.getElementById('priceChart').getContext('2d');
             const ctx2 = document.getElementById('diffChart').getContext('2d');
+            
             if (charts.price) charts.price.destroy();
             if (charts.diff) charts.diff.destroy();
 
+            // Chart 1: ประเมินใหม่ vs ซื้อขาย
             charts.price = new Chart(ctx1, {
                 type: 'line',
                 data: {
-                    labels: data.map((_, i) => i + 1),
+                    labels: data.map(d => d.landUnit), // แกน X เป็นหน่วยที่ดิน
                     datasets: [
-                        { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#2563eb', tension: 0.3, pointRadius: 2 },
-                        { label: 'ราคาตลาด', data: data.map(d => d.marketPrice), borderColor: '#d97706', tension: 0.3, pointRadius: 2 }
+                        { label: 'ราคาประเมินใหม่', data: data.map(d => d.newAssessed), borderColor: '#2563eb', backgroundColor: '#2563eb22', fill: true, tension: 0.3 },
+                        { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#dc2626', tension: 0.3 }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: { tooltip: { mode: 'index', intersect: false } }
+                }
             });
 
+            // Chart 2: % แตกต่าง แยกตามหน่วยที่ดิน
             charts.diff = new Chart(ctx2, {
                 type: 'bar',
                 data: {
-                    labels: data.map((_, i) => i + 1),
+                    labels: data.map(d => d.landUnit),
                     datasets: [{
                         label: '% ความแตกต่าง',
                         data: data.map(d => d.pctDiff),
-                        backgroundColor: data.map(d => d.pctDiff > 30 ? '#ef4444' : '#10b981')
+                        backgroundColor: data.map(d => d.pctDiff > 30 ? '#ef4444' : '#10b981'),
+                        borderRadius: 4
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
@@ -265,17 +248,15 @@
 
         function updateTable(data) {
             const tbody = document.getElementById('dataTableBody');
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-400">ไม่มีข้อมูลที่ตรงตามเงื่อนไข</td></tr>';
-                return;
-            }
             tbody.innerHTML = data.map(d => `
-                <tr class="hover:bg-gray-50 border-b border-gray-100">
-                    <td class="px-6 py-3">${d.group}</td>
+                <tr class="hover:bg-blue-50 transition">
+                    <td class="px-6 py-3 font-medium">${d.group}</td>
+                    <td class="px-6 py-3">${d.office}</td>
+                    <td class="px-6 py-3">หน่วย ${d.landUnit}</td>
                     <td class="px-6 py-3">${d.type}</td>
-                    <td class="px-6 py-3 text-right">${d.tradePrice.toLocaleString()}</td>
-                    <td class="px-6 py-3 text-right">${d.marketPrice.toLocaleString()}</td>
-                    <td class="px-6 py-3 text-right font-bold ${d.pctDiff > 30 ? 'text-red-600' : 'text-green-600'}">${d.pctDiff.toFixed(2)}%</td>
+                    <td class="px-6 py-3 text-right font-mono">${d.tradePrice.toLocaleString()}</td>
+                    <td class="px-6 py-3 text-right font-mono">${d.newAssessed.toLocaleString()}</td>
+                    <td class="px-6 py-3 text-right font-bold ${d.pctDiff > 30 ? 'text-red-600' : 'text-emerald-600'}">${d.pctDiff.toFixed(2)}%</td>
                 </tr>`).join('');
         }
 
