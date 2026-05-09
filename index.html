@@ -1,232 +1,70 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard ข้อมูลราคาประเมินที่ดิน</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-    theme: {
-        extend: {
-            colors: {
-                navy: { DEFAULT: '#0A1F44', dark: '#061533', light: '#1B3668' },
-                gold: { DEFAULT: '#D4AF37', light: '#F4D77A', dark: '#A8862A' }
-            },
-            fontFamily: {
-                sans: ['Sarabun', 'sans-serif']
-            }
-        }
-    }
-}
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
-
-<style>
-    body { font-family: 'Sarabun', sans-serif; }
-    .chart-container { position: relative; height: 350px; width: 100%; }
-    .toast-show { transform: translateX(0); opacity: 1; }
-    .toast-hide { transform: translateX(120%); opacity: 0; }
-</style>
-</head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
-
-<header class="bg-navy text-white border-b-4 border-gold shadow-md">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center gap-4">
-        <div>
-            <h1 class="text-xl md:text-2xl font-bold">Dashboard เปรียบเทียบราคาที่ดิน</h1>
-            <p class="text-xs text-gold">GitHub Pages Edition · ข้อมูลจาก data.csv</p>
-        </div>
-        <div class="flex gap-2">
-            <button onclick="loadData()" class="bg-gold hover:bg-gold-dark text-navy px-4 py-2 rounded-lg text-sm font-bold transition">↻ รีโหลดข้อมูล</button>
-        </div>
-    </div>
-</header>
-
-<main class="max-w-7xl mx-auto px-6 py-8">
-    <div id="kpiGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="font-bold text-navy mb-4 border-l-4 border-gold pl-3">การกระจายราคาที่ดิน</h3>
-            <div class="chart-container"><canvas id="lineChart"></canvas></div>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="font-bold text-navy mb-4 border-l-4 border-gold pl-3">% ความแตกต่างจากราคาตลาด</h3>
-            <div class="chart-container"><canvas id="barChart"></canvas></div>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-            <h3 class="font-bold text-navy">ตารางรายละเอียดข้อมูล</h3>
-            <span id="rowCount" class="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500 font-bold"></span>
-        </div>
-        <div class="overflow-x-auto max-h-[500px]">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-navy text-white sticky top-0 uppercase text-xs">
-                    <tr>
-                        <th class="px-4 py-3">กลุ่ม</th>
-                        <th class="px-4 py-3 text-right">ราคาซื้อขาย</th>
-                        <th class="px-4 py-3 text-right">ราคาตลาด</th>
-                        <th class="px-4 py-3 text-right">ราคาประเมินใหม่</th>
-                        <th class="px-4 py-3 text-right">% ต่าง</th>
-                    </tr>
-                </thead>
-                <tbody id="tBody" class="divide-y divide-slate-100"></tbody>
-            </table>
-        </div>
-    </div>
-</main>
-
-<div id="toast" class="toast-hide fixed bottom-5 right-5 bg-navy text-white px-6 py-3 rounded-xl shadow-2xl border-l-4 border-gold transition-all duration-300 z-50 text-sm font-bold"></div>
-
 <script>
 let allData = [];
 const charts = {};
 
-// ฟังก์ชันดึงข้อมูล (สำหรับ GitHub Pages ใช้ Relative Path จะดีที่สุด)
+// 1. ระบุ URL สำรอง (ใช้กรณีโหลดไฟล์ local ไม่ติด)
+const BACKUP_URL = 'https://raw.githubusercontent.com/akekalak12-glitch/akekalakch/main/data.csv';
+
 async function loadData() {
-    showToast("กำลังดึงข้อมูลจาก data.csv...");
+    showToast("กำลังดึงข้อมูล...");
     try {
-        // ดึงไฟล์จากโฟลเดอร์เดียวกัน
-        const response = await fetch('data.csv');
-        if (!response.ok) throw new Error('ไม่พบไฟล์ data.csv ใน Repository');
+        // ลองดึงจากไฟล์ที่อยู่ข้างๆ index.html ก่อน (ดีที่สุดสำหรับ GitHub Pages / Netlify)
+        let response = await fetch('data.csv');
+        
+        // ถ้าหาไม่เจอ (404) ให้ลองดึงจาก URL ตรงของ GitHub
+        if (!response.ok) {
+            console.warn("Local data.csv not found, trying backup URL...");
+            response = await fetch(BACKUP_URL);
+        }
+
+        if (!response.ok) throw new Error('ไม่สามารถโหลดข้อมูลได้ทั้งจาก Local และ GitHub');
+        
         const csvText = await response.text();
 
         Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
             complete: (results) => {
+                if (results.data.length === 0) {
+                    showToast("ไฟล์ว่างเปล่าหรือไม่มีข้อมูล");
+                    return;
+                }
                 processData(results.data);
-                showToast("โหลดข้อมูลสำเร็จ!");
+                showToast("โหลดข้อมูลสำเร็จ: " + results.data.length + " รายการ");
             },
-            error: (err) => showToast("Error: " + err.message)
+            error: (err) => showToast("Parsing Error: " + err.message)
         });
     } catch (error) {
         showToast("เกิดข้อผิดพลาด: " + error.message);
-        console.error(error);
+        console.error("Fetch error:", error);
     }
 }
 
 function processData(rawData) {
     allData = rawData.map(r => {
-        // ลบช่องว่างส่วนเกินในชื่อหัวตารางที่อาจเกิดขึ้นได้จากการ Save CSV
-        const getVal = (keys) => {
-            for (let key of keys) {
-                if (r[key] !== undefined) return r[key];
-            }
-            return 0;
+        // ใช้ฟังก์ชันช่วยดึงค่าเพื่อป้องกันชื่อหัวตารางมีเว้นวรรค (Trim)
+        const findVal = (targetName) => {
+            const key = Object.keys(r).find(k => k.trim() === targetName);
+            return key ? r[key] : null;
         };
 
-        const trade = parseFloat(String(getVal(["ราคาซื้อขายในช่วง 0.6 - 0.9", "ราคาซื้อขาย"])).replace(/,/g, ''));
-        const market = parseFloat(String(getVal(["ราคาของหน่วย", "ราคาตลาด"])).replace(/,/g, ''));
-        const assessed = parseFloat(String(getVal(["ราคาประเมินใหม่ของแปลงเซลที่เลือก", "ราคาประเมิน"])).replace(/,/g, ''));
-        const pDiff = parseFloat(String(getVal(["เปอร์เซนต์ความแตกต่างจากราคาตลาด", "%แตกต่าง"])).replace(/[%]/g, ''));
+        const trade = parseFloat(String(findVal("ราคาซื้อขายในช่วง 0.6 - 0.9") || 0).replace(/,/g, ''));
+        const market = parseFloat(String(findVal("ราคาของหน่วย") || 0).replace(/,/g, ''));
+        const assessed = parseFloat(String(findVal("ราคาประเมินใหม่ของแปลงเซลที่เลือก") || 0).replace(/,/g, ''));
+        const pDiff = parseFloat(String(findVal("เปอร์เซนต์ความแตกต่างจากราคาตลาด") || 0).replace(/[%]/g, ''));
 
         return {
-            group: r["รหัสกลุ่มที่ดิน"] || r["กลุ่ม"] || "-",
+            group: findVal("รหัสกลุ่มที่ดิน") || "-",
             tradePrice: trade,
             marketPrice: market,
             newAssessed: assessed,
-            pctDiff: pDiff
+            pctDiff: pDiff,
+            asRatio: parseFloat(findVal("AS_Ratio_New") || 0)
         };
     }).filter(d => !isNaN(d.tradePrice) && d.tradePrice > 0);
 
     render();
 }
 
-function render() {
-    updateKPI();
-    updateCharts();
-    updateTable();
-}
-
-function updateKPI() {
-    const diffs = allData.map(d => d.pctDiff);
-    const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length;
-    const maxDiff = Math.max(...diffs);
-
-    document.getElementById('kpiGrid').innerHTML = `
-        <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-navy">
-            <div class="text-xs text-slate-500 font-bold uppercase">จำนวนทั้งหมด</div>
-            <div class="text-2xl font-bold text-navy">${allData.length} แปลง</div>
-        </div>
-        <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-gold">
-            <div class="text-xs text-slate-500 font-bold uppercase">ค่าเฉลี่ย % ต่าง</div>
-            <div class="text-2xl font-bold text-gold-dark">${avgDiff.toFixed(2)}%</div>
-        </div>
-        <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-navy">
-            <div class="text-xs text-slate-500 font-bold uppercase">ส่วนต่างสูงสุด</div>
-            <div class="text-2xl font-bold text-red-600">${maxDiff.toFixed(2)}%</div>
-        </div>
-        <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-gold">
-            <div class="text-xs text-slate-500 font-bold uppercase">ความถูกต้อง</div>
-            <div class="text-2xl font-bold text-emerald-600">${(100-avgDiff).toFixed(2)}%</div>
-        </div>
-    `;
-    document.getElementById('rowCount').textContent = `ทั้งหมด ${allData.length} รายการ`;
-}
-
-function updateCharts() {
-    const labels = allData.map((_, i) => i + 1);
-
-    // Line Chart
-    if (charts.line) charts.line.destroy();
-    charts.line = new Chart(document.getElementById('lineChart'), {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                { label: 'ราคาซื้อขาย', data: allData.map(d => d.tradePrice), borderColor: '#0A1F44', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0 },
-                { label: 'ราคาตลาด', data: allData.map(d => d.marketPrice), borderColor: '#D4AF37', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
-
-    // Bar Chart
-    if (charts.bar) charts.bar.destroy();
-    charts.bar = new Chart(document.getElementById('barChart'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: '% ความต่าง',
-                data: allData.map(d => d.pctDiff),
-                backgroundColor: allData.map(d => d.pctDiff > 30 ? '#ef4444' : '#10b981')
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
-}
-
-function updateTable() {
-    const fmt = n => (n || 0).toLocaleString();
-    document.getElementById('tBody').innerHTML = allData.map(d => `
-        <tr class="hover:bg-slate-50 transition">
-            <td class="px-4 py-3 font-medium">${d.group}</td>
-            <td class="px-4 py-3 text-right font-mono">${fmt(d.tradePrice)}</td>
-            <td class="px-4 py-3 text-right font-mono">${fmt(d.marketPrice)}</td>
-            <td class="px-4 py-3 text-right font-mono">${fmt(d.newAssessed)}</td>
-            <td class="px-4 py-3 text-right font-bold ${d.pctDiff > 30 ? 'text-red-600' : 'text-emerald-600'}">${d.pctDiff.toFixed(2)}%</td>
-        </tr>
-    `).join('');
-}
-
-function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.replace('toast-hide', 'toast-show');
-    setTimeout(() => t.classList.replace('toast-show', 'toast-hide'), 3000);
-}
-
-// เริ่มงาน
-window.addEventListener('DOMContentLoaded', loadData);
+// ... ฟังก์ชัน render(), updateCharts(), updateTable() อื่นๆ ให้ใช้ตามเดิมได้เลยครับ ...
 </script>
-</body>
-</html>
