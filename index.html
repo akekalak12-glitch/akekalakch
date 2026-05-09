@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Dashboard - Dark Gold Edition</title>
+    <title>Executive Dashboard - Dark Gold Edition V5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
@@ -28,16 +28,26 @@
         body { font-family: 'Sarabun', sans-serif; background-color: #040B16; color: #e2e8f0; }
         .card { background-color: #0A162C; border-radius: 16px; border: 1px solid rgba(212, 175, 55, 0.3); box-shadow: 0 4px 20px rgba(212, 175, 55, 0.05); }
         .sidebar { background: linear-gradient(180deg, #020612 0%, #071122 100%); border-right: 1px solid rgba(212, 175, 55, 0.2); }
-        .chart-container { position: relative; height: 350px; width: 100%; }
+        .chart-container { position: relative; width: 100%; }
         .gauge-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; align-items: flex-end; }
-        .map-container { position: relative; height: 500px; width: 100%; }
+        .map-container { position: relative; width: 100%; height: 100%; min-height: 600px; }
         .gauge-text { position: absolute; bottom: -5px; text-align: center; width: 100%; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #040B16; }
         ::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 10px; }
         .clickable-chart canvas { cursor: pointer; }
-        /* Focus styles for selects */
-        select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23D4AF37' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); }
+        
+        /* แก้ไขปัญหาลูกศร Dropdown ซ้อนทับกัน */
+        select { 
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23D4AF37' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem !important;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -49,15 +59,15 @@
             </div>
             <div class="space-y-5">
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">1. จังหวัด</label>
-                    <select id="provinceFilter" onchange="filterChanged('province')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold appearance-none"><option value="all">ทั้งหมด</option></select></div>
+                    <select id="provinceFilter" onchange="filterChanged('province')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold"><option value="all">ทั้งหมด</option></select></div>
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">2. สำนักงานที่ดิน</label>
-                    <select id="officeFilter" onchange="filterChanged('office')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold appearance-none"><option value="all">ทั้งหมด</option></select></div>
+                    <select id="officeFilter" onchange="filterChanged('office')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold"><option value="all">ทั้งหมด</option></select></div>
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">3. กลุ่มที่ดิน</label>
-                    <select id="groupFilter" onchange="filterChanged('group')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold appearance-none"><option value="all">ทั้งหมด</option></select></div>
+                    <select id="groupFilter" onchange="filterChanged('group')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold"><option value="all">ทั้งหมด</option></select></div>
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">4. หน่วยที่ดิน</label>
-                    <select id="unitFilter" onchange="filterChanged('unit')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold appearance-none"><option value="all">ทั้งหมด</option></select></div>
+                    <select id="unitFilter" onchange="filterChanged('unit')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold"><option value="all">ทั้งหมด</option></select></div>
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">5. ประเภท</label>
-                    <select id="typeFilter" onchange="filterChanged('type')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold appearance-none"><option value="all">ทั้งหมด</option></select></div>
+                    <select id="typeFilter" onchange="filterChanged('type')" class="w-full bg-[#050D1A] text-gold-neon border border-gold/40 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-gold"><option value="all">ทั้งหมด</option></select></div>
                 <button onclick="resetFilters()" class="w-full mt-6 bg-gold hover:bg-gold-neon text-darkbg font-black py-3 rounded-lg transition shadow-[0_0_15px_rgba(212,175,55,0.4)]">✕ ล้างเงื่อนไขทั้งหมด</button>
             </div>
         </aside>
@@ -89,23 +99,28 @@
                 </div>
             </div>
 
-            <div class="card p-6 mb-8 relative">
-                <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><span class="text-8xl">🗺️</span></div>
-                <h4 class="font-bold text-lg text-white border-l-4 border-gold-neon pl-3 mb-4">แผนที่ความแม่นยำราคาตลาดรายจังหวัด (Median Accuracy %)</h4>
-                <div id="mapChart" class="map-container"></div>
-            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                
+                <div class="flex flex-col gap-8 lg:col-span-1">
+                    <div class="card p-5 border-t-4 border-cyan-neon flex-1 flex flex-col">
+                        <h4 class="font-bold text-base mb-1 text-cyan-neon">🏆 TOP 10 แม่นยำสูงสุด</h4>
+                        <p class="text-[10px] text-slate-400 mb-3">จังหวัดที่ดัชนีใกล้เคียง 100% ที่สุด</p>
+                        <div class="chart-container flex-1" style="min-height: 250px;"><canvas id="top10Chart"></canvas></div>
+                    </div>
+                    <div class="card p-5 border-t-4 border-pink-neon flex-1 flex flex-col">
+                        <h4 class="font-bold text-base mb-1 text-pink-neon">⚠️ BOTTOM 10 ต้องปรับปรุง</h4>
+                        <p class="text-[10px] text-slate-400 mb-3">จังหวัดที่ดัชนีห่างจาก 100% มากที่สุด</p>
+                        <div class="chart-container flex-1" style="min-height: 250px;"><canvas id="bottom10Chart"></canvas></div>
+                    </div>
+                </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div class="card p-6 border-t-4 border-cyan-neon">
-                    <h4 class="font-bold text-lg mb-2 text-cyan-neon">🏆 TOP 10: ประเมินแม่นยำที่สุด</h4>
-                    <p class="text-xs text-slate-400 mb-4">จัดอันดับตามความแม่นยำสูงสุด (% เข้าใกล้ 100 มากที่สุด)</p>
-                    <div class="chart-container" style="height: 300px;"><canvas id="top10Chart"></canvas></div>
+                <div class="card p-6 relative lg:col-span-2 flex flex-col">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><span class="text-8xl">🗺️</span></div>
+                    <h4 class="font-bold text-lg text-white border-l-4 border-gold-neon pl-3 mb-2">แผนที่ความแม่นยำราคาตลาดรายจังหวัด (Median Accuracy %)</h4>
+                    <p class="text-xs text-slate-400 mb-4 ml-4">เลื่อนเมาส์เหนือพื้นที่จังหวัดเพื่อดูรายละเอียดความแม่นยำ</p>
+                    <div id="mapChart" class="map-container flex-1"></div>
                 </div>
-                <div class="card p-6 border-t-4 border-pink-neon">
-                    <h4 class="font-bold text-lg mb-2 text-pink-neon">⚠️ BOTTOM 10: ต้องปรับปรุงด่วน</h4>
-                    <p class="text-xs text-slate-400 mb-4">จัดอันดับตามความแม่นยำต่ำสุด (% ห่างจาก 100 มากที่สุด)</p>
-                    <div class="chart-container" style="height: 300px;"><canvas id="bottom10Chart"></canvas></div>
-                </div>
+
             </div>
 
             <div class="card p-6 mb-8">
@@ -118,8 +133,8 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    <div class="clickable-chart chart-container"><canvas id="drillPriceChart"></canvas></div>
-                    <div class="clickable-chart chart-container"><canvas id="drillDiffChart"></canvas></div>
+                    <div class="clickable-chart chart-container" style="height: 350px;"><canvas id="drillPriceChart"></canvas></div>
+                    <div class="clickable-chart chart-container" style="height: 350px;"><canvas id="drillDiffChart"></canvas></div>
                 </div>
             </div>
 
@@ -156,15 +171,11 @@
 
         const calcMedian = arr => { if (!arr.length) return 0; const s = [...arr].sort((a,b)=>a-b), m = Math.floor(s.length/2); return s.length%2!==0 ? s[m] : (s[m-1]+s[m])/2; };
         const calcMean = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
-        
-        // การคำนวณส่วนกลับ Accuracy = 100 - % Diff
         const calcAcc = diff => Math.max(0, 100 - Math.abs(diff));
-
-        // Format Number
         const fmt = n => n.toLocaleString('th-TH');
         const fmtDec = n => n.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-        Chart.defaults.color = '#94a3b8'; // Label color dark mode
+        Chart.defaults.color = '#94a3b8';
 
         async function init() {
             try {
@@ -195,12 +206,10 @@
             } catch (e) { console.error(e); }
         }
 
-        // --- CASCADING FILTERS ---
         function updateFilterOptions(source) {
             const getVal = id => document.getElementById(id).value;
             const p = getVal('provinceFilter'), o = getVal('officeFilter'), g = getVal('groupFilter'), u = getVal('unitFilter');
 
-            // หาความเป็นไปได้ของข้อมูล
             const filteredForP = rawData;
             const filteredForO = rawData.filter(d => p==='all' || d.province===p);
             const filteredForG = filteredForO.filter(d => o==='all' || d.office===o);
@@ -212,7 +221,7 @@
             const updateSelect = (id, optionsList, currVal) => {
                 const el = document.getElementById(id);
                 el.innerHTML = `<option value="all">ทั้งหมด</option>` + optionsList.map(v => `<option value="${v}">${v}</option>`).join('');
-                if (optionsList.includes(currVal)) el.value = currVal; // รักษาค่าเดิมถ้ายังมีอยู่
+                if (optionsList.includes(currVal)) el.value = currVal; 
             };
 
             if(['init'].includes(source)) updateSelect('provinceFilter', getUnq(filteredForP, 'province'), p);
@@ -249,7 +258,6 @@
             applyFilters();
         }
 
-        // --- DASHBOARD UPDATES ---
         function updateDashboard() {
             updateKPIs();
             updateGauges();
@@ -262,8 +270,6 @@
         function updateKPIs() {
             const diffs = filteredData.map(d => d.pctDiff);
             const ratios = filteredData.map(d => d.asRatio);
-            
-            // ใช้ 100 - diff สำหรับ KPI ความแม่นยำ
             const accMean = 100 - calcMean(diffs);
             const accMed = 100 - calcMedian(diffs);
 
@@ -286,7 +292,6 @@
 
         function updateGauges() {
             const diffs = filteredData.map(d => d.pctDiff);
-            // ส่วนกลับ!
             let accMean = Math.max(0, Math.min(100, 100 - calcMean(diffs)));
             let accMed = Math.max(0, Math.min(100, 100 - calcMedian(diffs)));
 
@@ -296,8 +301,7 @@
             const createGauge = (ctxId, val, chartKey, activeColor) => {
                 if(charts[chartKey]) charts[chartKey].destroy();
                 const ctx = document.getElementById(ctxId).getContext('2d');
-                let color = val >= 90 ? '#00E5FF' : (val >= 70 ? '#D4AF37' : '#FF007A'); // เขียวฟ้า -> ทอง -> ชมพูแดง
-                
+                let color = val >= 90 ? '#00E5FF' : (val >= 70 ? '#D4AF37' : '#FF007A');
                 charts[chartKey] = new Chart(ctx, {
                     type: 'doughnut',
                     data: { datasets: [{ data: [val, 100-val], backgroundColor: [color, '#1e293b'], borderWidth: 0 }] },
@@ -316,14 +320,11 @@
                 provGroups[d.province].push(d.pctDiff);
             });
 
-            // คำนวณ Accuracy ระดับจังหวัด
             let rankings = Object.keys(provGroups).map(k => ({
                 prov: k, acc: calcAcc(calcMedian(provGroups[k]))
             })).filter(r => r.prov !== "-");
 
-            // Top 10 (แม่นยำมากสุด -> มากไปน้อย)
             let top10 = [...rankings].sort((a,b) => b.acc - a.acc).slice(0, 10);
-            // Bottom 10 (แม่นยำน้อยสุด -> น้อยไปมาก)
             let bottom10 = [...rankings].sort((a,b) => a.acc - b.acc).slice(0, 10);
 
             const renderBar = (ctxId, data, color, chartKey) => {
@@ -343,7 +344,6 @@
             renderBar('bottom10Chart', bottom10, '#FF007A', 'bot10');
         }
 
-        // --- DRILL DOWN LOGIC ---
         function setDrillLevel(level, prov, off) {
             drillLevel = level; selectedProv = prov; selectedOffice = off;
             processDrillData();
@@ -411,7 +411,6 @@
                 options: { responsive: true, maintainAspectRatio: false, onClick: handleBarClick, plugins: { tooltip: ttp }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#1e293b' } } } }
             });
 
-            // กราฟนี้เปลี่ยนมาโชว์ค่า Accuracy แทน
             charts.dDiff = new Chart(document.getElementById('drillDiffChart').getContext('2d'), {
                 type: 'bar',
                 data: { labels: drillData.map(d=>d.label), datasets: [{
