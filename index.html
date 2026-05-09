@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard ความแตกต่างราคาตลาด | เมืองยะลา</title>
+<title>Dashboard ความแตกต่างราคาตลาด | สำนักงานที่ดินเมืองยะลา</title>
 
-<!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {
@@ -23,64 +22,49 @@ tailwind.config = {
 }
 </script>
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<!-- PapaParse for CSV -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<!-- Sarabun Thai Font -->
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-    /* Minor custom styles for things Tailwind needs help with */
     body { font-family: 'Sarabun', 'Segoe UI', 'Tahoma', sans-serif; }
     .chart-container { position: relative; }
     .scrollbar-thin::-webkit-scrollbar { height: 8px; width: 8px; }
     .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 4px; }
     .num { font-variant-numeric: tabular-nums; }
-    /* Heading accent bar */
     .heading-accent::before {
         content: '';
         display: inline-block;
-        width: 4px;
-        height: 20px;
-        background: #D4AF37;
-        border-radius: 2px;
-        margin-right: 10px;
-        vertical-align: middle;
+        width: 4px; height: 20px;
+        background: #D4AF37; border-radius: 2px;
+        margin-right: 10px; vertical-align: middle;
     }
-    /* Toast animation */
     .toast-enter { transform: translateX(120%); }
     .toast-show { transform: translateX(0); }
     .transition-toast { transition: transform 0.3s ease; }
-    /* Selectable file inputs hidden */
     .file-hidden { display: none; }
 </style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen">
 
-<!-- ============= HEADER ============= -->
 <header class="bg-gradient-to-br from-navy to-navy-light text-white border-b-4 border-gold shadow-lg">
     <div class="max-w-[1700px] mx-auto px-6 md:px-10 py-5 flex flex-wrap justify-between items-center gap-4">
         <div>
             <h1 class="text-xl md:text-2xl font-bold tracking-tight">
                 Dashboard ความแตกต่างราคาตลาด <span class="text-gold">·</span> สำนักงานที่ดินเมืองยะลา
             </h1>
-            <p class="text-xs md:text-sm opacity-80 mt-1">
-                วิเคราะห์ความใกล้เคียงราคาประเมินใหม่กับราคาตลาดซื้อขาย · Market Price Proximity Analysis
-            </p>
+            <p class="text-xs md:text-sm opacity-80 mt-1">วิเคราะห์ข้อมูลสดจาก GitHub (data.csv)</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button onclick="exportCSV()" class="px-4 py-2 rounded-md border-2 border-gold text-white font-semibold text-sm hover:bg-gold hover:text-navy transition">⤓ Export CSV</button>
-            <button onclick="resetData()" class="px-4 py-2 rounded-md border-2 border-gold text-white font-semibold text-sm hover:bg-gold hover:text-navy transition">↻ Reset</button>
-            <button onclick="openShare()" class="px-4 py-2 rounded-md bg-gold text-navy font-semibold text-sm hover:bg-gold-light transition">🔗 แชร์เป็นลิงก์</button>
+            <button onclick="fetchDataFromGitHub()" class="px-4 py-2 rounded-md border-2 border-gold text-white font-semibold text-sm hover:bg-gold hover:text-navy transition">↻ รีเฟรชข้อมูล GitHub</button>
+            <button onclick="exportCSV()" class="px-4 py-2 rounded-md border-2 border-slate-400 text-white font-semibold text-sm hover:bg-white hover:text-navy transition">⤓ Export CSV</button>
         </div>
     </div>
 </header>
 
 <main class="max-w-[1700px] mx-auto px-6 md:px-10 py-7">
 
-    <!-- ============= FILTERS ============= -->
     <section class="bg-white rounded-xl shadow-sm p-5 md:p-6 mb-6">
         <h3 class="heading-accent text-navy font-bold text-base mb-4">ตัวกรองข้อมูล (Filters)</h3>
         <div class="flex flex-wrap items-end gap-4">
@@ -96,67 +80,36 @@ tailwind.config = {
                     <option value="">ทั้งหมด</option>
                 </select>
             </div>
-            <div class="flex flex-col gap-1.5 min-w-[160px]">
-                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">หน่วยที่ดิน</label>
-                <select id="fUnit" onchange="applyFilters()" class="px-3 py-2 rounded-md border-2 border-slate-200 focus:border-gold focus:outline-none text-navy font-medium cursor-pointer">
-                    <option value="">ทั้งหมด</option>
-                </select>
-            </div>
-            <div class="flex-1"></div>
             <button onclick="clearFilters()" class="px-4 py-2 rounded-md bg-slate-100 hover:bg-slate-200 text-navy font-semibold text-sm border border-slate-200 transition">✕ ล้างตัวกรอง</button>
         </div>
     </section>
 
-    <!-- ============= KPI CARDS ============= -->
     <section id="kpiGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6"></section>
 
-    <!-- ============= ROW 1: LINE + BAR ============= -->
     <section class="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-5 mb-6">
         <div class="bg-white rounded-xl shadow-sm p-5">
-            <h3 class="heading-accent text-navy font-bold text-base">เปรียบเทียบราคา 3 ระดับ (Price Comparison Trend)</h3>
-            <p class="text-xs text-slate-500 mb-4">ราคาซื้อขาย vs ราคาตลาดอ้างอิง vs ราคาประเมินใหม่ — เรียงตามลำดับ</p>
+            <h3 class="heading-accent text-navy font-bold text-base">เปรียบเทียบราคา 3 ระดับ</h3>
             <div class="chart-container h-[360px]"><canvas id="lineChart"></canvas></div>
         </div>
         <div class="bg-white rounded-xl shadow-sm p-5">
             <h3 class="heading-accent text-navy font-bold text-base">% ความแตกต่างจากราคาตลาด</h3>
-            <p class="text-xs text-slate-500 mb-4">เส้นทอง = Median · เส้นน้ำเงิน = Mean · สีบาร์บอกระดับความเบี่ยงเบน</p>
             <div class="chart-container h-[360px]"><canvas id="barChart"></canvas></div>
         </div>
     </section>
 
-    <!-- ============= ROW 2: UNIT + TYPE ============= -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
-        <div class="bg-white rounded-xl shadow-sm p-5">
-            <h3 class="heading-accent text-navy font-bold text-base">Mean & Median % แตกต่าง · แยกตามหน่วยที่ดิน</h3>
-            <p class="text-xs text-slate-500 mb-4">เปรียบเทียบค่าเฉลี่ยและค่ามัธยฐานในแต่ละหน่วยที่ดิน</p>
-            <div class="chart-container h-[320px]"><canvas id="unitChart"></canvas></div>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm p-5">
-            <h3 class="heading-accent text-navy font-bold text-base">การกระจายตามประเภท (Type Distribution)</h3>
-            <p class="text-xs text-slate-500 mb-4">จำนวนแปลงและ % แตกต่างเฉลี่ยในแต่ละประเภท</p>
-            <div class="chart-container h-[320px]"><canvas id="typeChart"></canvas></div>
-        </div>
-    </section>
-
-    <!-- ============= DATA TABLE ============= -->
     <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
         <h3 class="heading-accent text-navy font-bold text-base">รายละเอียดข้อมูล (Data Table)</h3>
-        <p id="tableDesc" class="text-xs text-slate-500 mb-3">แสดงทั้งหมด</p>
-        <div class="overflow-x-auto overflow-y-auto max-h-[420px] rounded-lg border border-slate-200 scrollbar-thin">
+        <div class="overflow-x-auto max-h-[420px] mt-4 rounded-lg border border-slate-200 scrollbar-thin">
             <table class="w-full text-sm">
-                <thead class="sticky top-0 z-10">
-                    <tr class="bg-navy text-white">
-                        <th class="px-3 py-2.5 text-left font-semibold text-xs whitespace-nowrap">#</th>
-                        <th class="px-3 py-2.5 text-left font-semibold text-xs whitespace-nowrap">สำนักงาน</th>
-                        <th class="px-3 py-2.5 text-left font-semibold text-xs whitespace-nowrap">กลุ่ม</th>
-                        <th class="px-3 py-2.5 text-left font-semibold text-xs whitespace-nowrap">หน่วย</th>
-                        <th class="px-3 py-2.5 text-left font-semibold text-xs whitespace-nowrap">ประเภท</th>
-                        <th class="px-3 py-2.5 text-right font-semibold text-xs whitespace-nowrap">ราคาซื้อขาย</th>
-                        <th class="px-3 py-2.5 text-right font-semibold text-xs whitespace-nowrap">ราคาตลาด</th>
-                        <th class="px-3 py-2.5 text-right font-semibold text-xs whitespace-nowrap">ราคาประเมิน</th>
-                        <th class="px-3 py-2.5 text-right font-semibold text-xs whitespace-nowrap">AS_Ratio</th>
-                        <th class="px-3 py-2.5 text-right font-semibold text-xs whitespace-nowrap">% แตกต่าง</th>
-                        <th class="px-3 py-2.5 text-left font-semibold text-xs whitespace-nowrap">สถานะ</th>
+                <thead class="sticky top-0 z-10 bg-navy text-white">
+                    <tr>
+                        <th class="px-3 py-2.5 text-left text-xs whitespace-nowrap">#</th>
+                        <th class="px-3 py-2.5 text-left text-xs whitespace-nowrap">กลุ่ม</th>
+                        <th class="px-3 py-2.5 text-left text-xs whitespace-nowrap">ประเภท</th>
+                        <th class="px-3 py-2.5 text-right text-xs whitespace-nowrap">ราคาซื้อขาย</th>
+                        <th class="px-3 py-2.5 text-right text-xs whitespace-nowrap">ราคาตลาด</th>
+                        <th class="px-3 py-2.5 text-right text-xs whitespace-nowrap">ราคาประเมิน</th>
+                        <th class="px-3 py-2.5 text-right text-xs whitespace-nowrap">% แตกต่าง</th>
                     </tr>
                 </thead>
                 <tbody id="tBody"></tbody>
@@ -164,55 +117,69 @@ tailwind.config = {
         </div>
     </section>
 
-    <!-- ============= UPLOAD ============= -->
-    <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
-        <h3 class="heading-accent text-navy font-bold text-base">อัปเดตข้อมูล (Update Data)</h3>
-        <p class="text-xs text-slate-500 mb-4">อัปโหลดไฟล์ CSV ใหม่เพื่อรีเฟรช Dashboard ทั้งหมด</p>
-        <div id="uploadArea" class="border-2 border-dashed border-gold rounded-lg p-6 text-center bg-amber-50 hover:bg-amber-100 cursor-pointer transition">
-            <div class="text-3xl text-gold-dark">⬆</div>
-            <div class="text-navy font-semibold mt-2">คลิกหรือลากไฟล์ CSV มาที่นี่</div>
-            <div class="text-xs text-slate-500 mt-1">รูปแบบ: สำนักงาน, กลุ่ม, ราคาซื้อขาย, หน่วย, ราคาตลาด, ความลึก, ประเภท, ราคาประเมิน, AS_Ratio, %แตกต่าง</div>
-            <input type="file" id="fileInput" accept=".csv" class="file-hidden">
-        </div>
-    </section>
-
-    <footer class="text-center text-xs text-slate-500 py-5 border-t border-slate-200">
-        © 2026 Executive Dashboard · <span class="text-gold-dark font-semibold">ตรวจสอบความใกล้เคียงราคาตลาด</span> · ข้อมูลจาก สนง. ที่ดินเมืองยะลา
+    <footer class="text-center text-xs text-slate-500 py-5">
+        © 2026 Executive Dashboard · ดึงข้อมูลอัตโนมัติจาก GitHub
     </footer>
 </main>
 
-<!-- ============= SHARE MODAL ============= -->
-<div id="shareModal" class="hidden fixed inset-0 bg-navy/60 z-50 items-center justify-center">
-    <div class="bg-white rounded-xl p-6 max-w-xl w-[92%] border-t-4 border-gold">
-        <h3 class="text-navy font-bold text-lg mb-3">🔗 แชร์ Dashboard</h3>
-        <p class="text-sm text-slate-500">ลิงก์ฝังข้อมูลปัจจุบันไว้ใน URL — ส่งให้ใครก็เปิดเห็นข้อมูลเดียวกัน</p>
-        <div id="shareBox" class="bg-slate-100 border border-slate-200 rounded-md p-3 font-mono text-xs break-all max-h-[140px] overflow-y-auto my-3"></div>
-        <div class="flex flex-wrap gap-2">
-            <button onclick="copyLink()" class="px-4 py-2 rounded-md bg-navy hover:bg-navy-light text-white font-semibold text-sm">📋 คัดลอกลิงก์</button>
-            <button onclick="downloadHTML()" class="px-4 py-2 rounded-md bg-gold hover:bg-gold-light text-navy font-semibold text-sm">⬇ ดาวน์โหลด HTML</button>
-            <button onclick="closeShare()" class="px-4 py-2 rounded-md bg-slate-100 hover:bg-slate-200 text-navy font-semibold text-sm border border-slate-200">ปิด</button>
-        </div>
-        <p class="text-xs text-slate-500 mt-3">
-            <strong>โฮสต์เป็นเว็บไซต์:</strong> ดาวน์โหลด HTML แล้วอัปโหลดไป GitHub Pages, Netlify, Vercel หรือ web hosting ใดก็ได้ — ได้ URL ถาวรทันที
-        </p>
-    </div>
-</div>
-
-<!-- ============= TOAST ============= -->
 <div id="toast" class="toast-enter transition-toast fixed top-5 right-5 bg-navy text-white px-5 py-3 rounded-lg border-l-4 border-gold shadow-2xl z-[60] font-semibold text-sm"></div>
 
 <script>
-// ========================================================================
-// EMBEDDED DATA — 100 records from สำนักงานที่ดินเมืองยะลา
-// ========================================================================
-const EMBEDDED_DATA = [{"office":"เมืองยะลา","group":1,"tradePrice":12170,"unit":1,"marketPrice":11000,"depth":40,"type":"ดีกว่า","newAssessed":9985,"asRatio":0.820460148,"pctDiff":17.95},{"office":"เมืองยะลา","group":1,"tradePrice":10058,"unit":1,"marketPrice":11000,"depth":40,"type":"ดีกว่า","newAssessed":9570,"asRatio":0.951481408,"pctDiff":4.85},{"office":"เมืองยะลา","group":1,"tradePrice":11516,"unit":1,"marketPrice":11000,"depth":40,"type":"ดีกว่า","newAssessed":8624,"asRatio":0.748871136,"pctDiff":25.11},{"office":"เมืองยะลา","group":1,"tradePrice":13532,"unit":1,"marketPrice":11000,"depth":40,"type":"ดีกว่า","newAssessed":8806,"asRatio":0.650753769,"pctDiff":34.92},{"office":"เมืองยะลา","group":1,"tradePrice":13874,"unit":1,"marketPrice":11000,"depth":40,"type":"ดีกว่า","newAssessed":7754,"asRatio":0.558887127,"pctDiff":44.11},{"office":"เมืองยะลา","group":1,"tradePrice":12771,"unit":1,"marketPrice":11000,"depth":40,"type":"ดีกว่า","newAssessed":9146,"asRatio":0.716153786,"pctDiff":28.38},{"office":"เมืองยะลา","group":1,"tradePrice":11380,"unit":1,"marketPrice":11000,"depth":40,"type":"ดีกว่า","newAssessed":8290,"asRatio":0.728471002,"pctDiff":27.15},{"office":"เมืองยะลา","group":1,"tradePrice":10682,"unit":1,"marketPrice":11000,"depth":40,"type":"ดีกว่า","newAssessed":8588,"asRatio":0.803969294,"pctDiff":19.6},{"office":"เมืองยะลา","group":1,"tradePrice":22958,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":17922,"asRatio":0.780642913,"pctDiff":21.94},{"office":"เมืองยะลา","group":1,"tradePrice":22510,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":14813,"asRatio":0.658063083,"pctDiff":34.19},{"office":"เมืองยะลา","group":1,"tradePrice":22846,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":19863,"asRatio":0.869430097,"pctDiff":13.06},{"office":"เมืองยะลา","group":1,"tradePrice":24988,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":19033,"asRatio":0.761685609,"pctDiff":23.83},{"office":"เมืองยะลา","group":1,"tradePrice":22994,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":19550,"asRatio":0.850221797,"pctDiff":14.98},{"office":"เมืองยะลา","group":1,"tradePrice":24213,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":19864,"asRatio":0.820385743,"pctDiff":17.96},{"office":"เมืองยะลา","group":1,"tradePrice":23665,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":15490,"asRatio":0.654553138,"pctDiff":34.54},{"office":"เมืองยะลา","group":1,"tradePrice":21641,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":19560,"asRatio":0.903839933,"pctDiff":9.62},{"office":"เมืองยะลา","group":1,"tradePrice":21237,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":15701,"asRatio":0.73932288,"pctDiff":26.07},{"office":"เมืองยะลา","group":1,"tradePrice":24713,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":15811,"asRatio":0.639784729,"pctDiff":36.02},{"office":"เมืองยะลา","group":1,"tradePrice":20705,"unit":2,"marketPrice":20000,"depth":40,"type":"ราคาตลาด","newAssessed":16195,"asRatio":0.782178218,"pctDiff":21.78},{"office":"เมืองยะลา","group":1,"tradePrice":31878,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":25019,"asRatio":0.784835937,"pctDiff":21.52},{"office":"เมืองยะลา","group":1,"tradePrice":34431,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":23362,"asRatio":0.678516453,"pctDiff":32.15},{"office":"เมืองยะลา","group":1,"tradePrice":31902,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":27608,"asRatio":0.865400288,"pctDiff":13.46},{"office":"เมืองยะลา","group":1,"tradePrice":34791,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":25098,"asRatio":0.721393464,"pctDiff":27.86},{"office":"เมืองยะลา","group":1,"tradePrice":31158,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":23089,"asRatio":0.741029591,"pctDiff":25.9},{"office":"เมืองยะลา","group":1,"tradePrice":30402,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":20052,"asRatio":0.659561871,"pctDiff":34.04},{"office":"เมืองยะลา","group":1,"tradePrice":34016,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":21247,"asRatio":0.624617827,"pctDiff":37.54},{"office":"เมืองยะลา","group":1,"tradePrice":30356,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":22697,"asRatio":0.747694031,"pctDiff":25.23},{"office":"เมืองยะลา","group":1,"tradePrice":34401,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":22434,"asRatio":0.652132205,"pctDiff":34.79},{"office":"เมืองยะลา","group":1,"tradePrice":33437,"unit":3,"marketPrice":28000,"depth":40,"type":"ด้อยกว่า","newAssessed":20582,"asRatio":0.615545653,"pctDiff":38.45},{"office":"เมืองยะลา","group":1,"tradePrice":41604,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":30394,"asRatio":0.730554754,"pctDiff":26.94},{"office":"เมืองยะลา","group":1,"tradePrice":44635,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":36812,"asRatio":0.824733953,"pctDiff":17.53},{"office":"เมืองยะลา","group":1,"tradePrice":43873,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":37656,"asRatio":0.858295535,"pctDiff":14.17},{"office":"เมืองยะลา","group":1,"tradePrice":40780,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":30771,"asRatio":0.754561059,"pctDiff":24.54},{"office":"เมืองยะลา","group":1,"tradePrice":43981,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":30762,"asRatio":0.699438394,"pctDiff":30.06},{"office":"เมืองยะลา","group":1,"tradePrice":43660,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":35547,"asRatio":0.814177737,"pctDiff":18.58},{"office":"เมืองยะลา","group":1,"tradePrice":41134,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":32026,"asRatio":0.778577333,"pctDiff":22.14},{"office":"เมืองยะลา","group":1,"tradePrice":44110,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":31146,"asRatio":0.70609839,"pctDiff":29.39},{"office":"เมืองยะลา","group":1,"tradePrice":44920,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":29818,"asRatio":0.663802315,"pctDiff":33.62},{"office":"เมืองยะลา","group":1,"tradePrice":42526,"unit":4,"marketPrice":40000,"depth":40,"type":"ด้อยกว่า","newAssessed":34525,"asRatio":0.811856276,"pctDiff":18.81},{"office":"เมืองยะลา","group":1,"tradePrice":52087,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":41382,"asRatio":0.794478469,"pctDiff":20.55},{"office":"เมืองยะลา","group":1,"tradePrice":53409,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":39683,"asRatio":0.743002116,"pctDiff":25.7},{"office":"เมืองยะลา","group":1,"tradePrice":54640,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":38166,"asRatio":0.698499268,"pctDiff":30.15},{"office":"เมืองยะลา","group":1,"tradePrice":51771,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":38340,"asRatio":0.740569044,"pctDiff":25.94},{"office":"เมืองยะลา","group":1,"tradePrice":54603,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":36280,"asRatio":0.664432357,"pctDiff":33.56},{"office":"เมืองยะลา","group":1,"tradePrice":54499,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":31668,"asRatio":0.581074882,"pctDiff":41.89},{"office":"เมืองยะลา","group":1,"tradePrice":54729,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":37829,"asRatio":0.691205759,"pctDiff":30.88},{"office":"เมืองยะลา","group":1,"tradePrice":50885,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":32362,"asRatio":0.635983099,"pctDiff":36.4},{"office":"เมืองยะลา","group":1,"tradePrice":54987,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":44265,"asRatio":0.805008457,"pctDiff":19.5},{"office":"เมืองยะลา","group":1,"tradePrice":53246,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":38550,"asRatio":0.723998047,"pctDiff":27.6},{"office":"เมืองยะลา","group":1,"tradePrice":52631,"unit":5,"marketPrice":45000,"depth":40,"type":"ด้อยกว่า","newAssessed":41460,"asRatio":0.787748665,"pctDiff":21.23},{"office":"เมืองยะลา","group":2,"tradePrice":8003,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":4740,"asRatio":1.688396624,"pctDiff":40.77},{"office":"เมืองยะลา","group":2,"tradePrice":8385,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":4560,"asRatio":1.838815789,"pctDiff":45.62},{"office":"เมืองยะลา","group":2,"tradePrice":8104,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":4620,"asRatio":1.754112554,"pctDiff":42.99},{"office":"เมืองยะลา","group":2,"tradePrice":8150,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":4740,"asRatio":1.719409283,"pctDiff":41.84},{"office":"เมืองยะลา","group":2,"tradePrice":8296,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":5040,"asRatio":1.646031746,"pctDiff":39.25},{"office":"เมืองยะลา","group":2,"tradePrice":8308,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":4860,"asRatio":1.709465021,"pctDiff":41.5},{"office":"เมืองยะลา","group":2,"tradePrice":8135,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":5460,"asRatio":1.48992674,"pctDiff":32.88},{"office":"เมืองยะลา","group":2,"tradePrice":8246,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":4560,"asRatio":1.808333333,"pctDiff":44.7},{"office":"เมืองยะลา","group":2,"tradePrice":8355,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":5040,"asRatio":1.657738095,"pctDiff":39.68},{"office":"เมืองยะลา","group":2,"tradePrice":8187,"unit":6,"marketPrice":6000,"depth":60,"type":"พอใช้","newAssessed":4260,"asRatio":1.921830986,"pctDiff":47.97},{"office":"เมืองยะลา","group":2,"tradePrice":9075,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":6510,"asRatio":1.394009217,"pctDiff":28.26},{"office":"เมืองยะลา","group":2,"tradePrice":9068,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":5950,"asRatio":1.524033613,"pctDiff":34.38},{"office":"เมืองยะลา","group":2,"tradePrice":9466,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":6580,"asRatio":1.438601824,"pctDiff":30.49},{"office":"เมืองยะลา","group":2,"tradePrice":8280,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":5740,"asRatio":1.442508711,"pctDiff":30.68},{"office":"เมืองยะลา","group":2,"tradePrice":8979,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":6230,"asRatio":1.441252006,"pctDiff":30.62},{"office":"เมืองยะลา","group":2,"tradePrice":9423,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":5180,"asRatio":1.819111969,"pctDiff":45.03},{"office":"เมืองยะลา","group":2,"tradePrice":8987,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":5880,"asRatio":1.528401361,"pctDiff":34.57},{"office":"เมืองยะลา","group":2,"tradePrice":8706,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":5250,"asRatio":1.658285714,"pctDiff":39.7},{"office":"เมืองยะลา","group":2,"tradePrice":9477,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":5040,"asRatio":1.880357143,"pctDiff":46.82},{"office":"เมืองยะลา","group":2,"tradePrice":9778,"unit":7,"marketPrice":7000,"depth":60,"type":"พอใช้","newAssessed":4900,"asRatio":1.995510204,"pctDiff":49.89},{"office":"เมืองยะลา","group":2,"tradePrice":8311,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":6800,"asRatio":1.222205882,"pctDiff":18.18},{"office":"เมืองยะลา","group":2,"tradePrice":9178,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":6960,"asRatio":1.318678161,"pctDiff":24.17},{"office":"เมืองยะลา","group":2,"tradePrice":8376,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":7360,"asRatio":1.138043478,"pctDiff":12.13},{"office":"เมืองยะลา","group":2,"tradePrice":10383,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":7600,"asRatio":1.366184211,"pctDiff":26.8},{"office":"เมืองยะลา","group":2,"tradePrice":9960,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":6160,"asRatio":1.616883117,"pctDiff":38.15},{"office":"เมืองยะลา","group":2,"tradePrice":9302,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":6000,"asRatio":1.550333333,"pctDiff":35.5},{"office":"เมืองยะลา","group":2,"tradePrice":10255,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":7200,"asRatio":1.424305556,"pctDiff":29.79},{"office":"เมืองยะลา","group":2,"tradePrice":8209,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":6240,"asRatio":1.315544872,"pctDiff":23.99},{"office":"เมืองยะลา","group":2,"tradePrice":10040,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":6720,"asRatio":1.494047619,"pctDiff":33.07},{"office":"เมืองยะลา","group":2,"tradePrice":8845,"unit":8,"marketPrice":8000,"depth":60,"type":"พอใช้","newAssessed":6800,"asRatio":1.300735294,"pctDiff":23.12},{"office":"เมืองยะลา","group":2,"tradePrice":12188,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":7830,"asRatio":1.556577267,"pctDiff":35.76},{"office":"เมืองยะลา","group":2,"tradePrice":9815,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":7920,"asRatio":1.239267677,"pctDiff":19.31},{"office":"เมืองยะลา","group":2,"tradePrice":9065,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":7740,"asRatio":1.17118863,"pctDiff":14.62},{"office":"เมืองยะลา","group":2,"tradePrice":9985,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":7470,"asRatio":1.336680054,"pctDiff":25.19},{"office":"เมืองยะลา","group":2,"tradePrice":10469,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":7380,"asRatio":1.418563686,"pctDiff":29.51},{"office":"เมืองยะลา","group":2,"tradePrice":9137,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":7740,"asRatio":1.180490956,"pctDiff":15.29},{"office":"เมืองยะลา","group":2,"tradePrice":12320,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":6480,"asRatio":1.901234568,"pctDiff":47.4},{"office":"เมืองยะลา","group":2,"tradePrice":11221,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":8370,"asRatio":1.340621266,"pctDiff":25.41},{"office":"เมืองยะลา","group":2,"tradePrice":9377,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":7020,"asRatio":1.335754986,"pctDiff":25.14},{"office":"เมืองยะลา","group":2,"tradePrice":11418,"unit":9,"marketPrice":9000,"depth":60,"type":"พอใช้","newAssessed":6390,"asRatio":1.78685446,"pctDiff":44.04},{"office":"เมืองยะลา","group":2,"tradePrice":10683,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":8800,"asRatio":1.213977273,"pctDiff":17.63},{"office":"เมืองยะลา","group":2,"tradePrice":13243,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":9400,"asRatio":1.408829787,"pctDiff":29.02},{"office":"เมืองยะลา","group":2,"tradePrice":10661,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":8900,"asRatio":1.197865169,"pctDiff":16.52},{"office":"เมืองยะลา","group":2,"tradePrice":12846,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":9300,"asRatio":1.381290323,"pctDiff":27.6},{"office":"เมืองยะลา","group":2,"tradePrice":13513,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":8000,"asRatio":1.689125,"pctDiff":40.8},{"office":"เมืองยะลา","group":2,"tradePrice":12720,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":8000,"asRatio":1.59,"pctDiff":37.11},{"office":"เมืองยะลา","group":2,"tradePrice":12640,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":7600,"asRatio":1.663157895,"pctDiff":39.87},{"office":"เมืองยะลา","group":2,"tradePrice":13084,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":8800,"asRatio":1.486818182,"pctDiff":32.74},{"office":"เมืองยะลา","group":2,"tradePrice":10102,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":7200,"asRatio":1.403055556,"pctDiff":28.73},{"office":"เมืองยะลา","group":2,"tradePrice":10631,"unit":10,"marketPrice":10000,"depth":60,"type":"พอใช้","newAssessed":7900,"asRatio":1.345696203,"pctDiff":25.69}];
-
-let allData = [...EMBEDDED_DATA];
+// ==========================================
+// CONFIG & STATE
+// ==========================================
+const GITHUB_CSV_URL = 'https://raw.githubusercontent.com/akekalak12-glitch/akekalakch/refs/heads/main/data.csv';
+let allData = [];
 const charts = {};
 
-// ========================================================================
-// STATISTICS UTILS
-// ========================================================================
+// ==========================================
+// DATA FETCHING
+// ==========================================
+async function fetchDataFromGitHub() {
+    toast("กำลังโหลดข้อมูลจาก GitHub...");
+    try {
+        const response = await fetch(GITHUB_CSV_URL);
+        if (!response.ok) throw new Error('ไม่สามารถเชื่อมต่อ GitHub ได้');
+        const csvString = await response.text();
+        
+        Papa.parse(csvString, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                allData = results.data.map(r => {
+                    // Mapping ให้รองรับทั้งหัวตารางไทยและอังกฤษ
+                    const trade = parseFloat(String(r["ราคาซื้อขาย"] || r["tradePrice"]).replace(/,/g, ''));
+                    const market = parseFloat(String(r["ราคาตลาด"] || r["marketPrice"]).replace(/,/g, ''));
+                    const assessed = parseFloat(String(r["ราคาประเมิน"] || r["newAssessed"]).replace(/,/g, ''));
+                    const pDiff = parseFloat(String(r["%แตกต่าง"] || r["pctDiff"] || 0).replace(/[%]/g, ''));
+                    
+                    return {
+                        office: r["สำนักงาน"] || r["office"] || "เมืองยะลา",
+                        group: r["กลุ่ม"] || r["group"],
+                        tradePrice: trade,
+                        marketPrice: market,
+                        newAssessed: assessed,
+                        type: r["ประเภท"] || r["type"],
+                        unit: r["หน่วย"] || r["unit"],
+                        asRatio: parseFloat(r["AS_Ratio"] || r["asRatio"] || 0),
+                        pctDiff: pDiff
+                    };
+                }).filter(d => !isNaN(d.tradePrice));
+
+                setupFilters();
+                render(allData);
+                toast("โหลดข้อมูลสำเร็จ: " + allData.length + " รายการ");
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        toast("เกิดข้อผิดพลาด: " + error.message);
+    }
+}
+
+// ==========================================
+// UTILS & REUSABLE FUNCTIONS (จากโค้ดเดิมของคุณ)
+// ==========================================
 const median = arr => {
     if (!arr.length) return 0;
     const s = [...arr].sort((a,b) => a-b);
@@ -220,406 +187,127 @@ const median = arr => {
     return n % 2 === 0 ? (s[n/2-1] + s[n/2]) / 2 : s[Math.floor(n/2)];
 };
 const mean = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
-const fmt = (n, d=2) => n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
-const fmtInt = n => n.toLocaleString('th-TH');
-const getStats = (data, key) => {
-    const arr = data.map(d => d[key]).filter(v => !isNaN(v));
-    return { mean: mean(arr), median: median(arr), min: arr.length ? Math.min(...arr) : 0, max: arr.length ? Math.max(...arr) : 0, count: arr.length };
-};
+const fmt = (n, d=2) => (n || 0).toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtInt = n => (n || 0).toLocaleString('th-TH');
 
-// ========================================================================
-// FILTERS
-// ========================================================================
 function setupFilters() {
     const groups = [...new Set(allData.map(d => d.group))].sort((a,b) => a-b);
     const types = [...new Set(allData.map(d => d.type))];
-    const units = [...new Set(allData.map(d => d.unit))].sort((a,b) => a-b);
     document.getElementById('fGroup').innerHTML = '<option value="">ทั้งหมด</option>' + groups.map(g => `<option value="${g}">กลุ่ม ${g}</option>`).join('');
     document.getElementById('fType').innerHTML = '<option value="">ทั้งหมด</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
-    document.getElementById('fUnit').innerHTML = '<option value="">ทั้งหมด</option>' + units.map(u => `<option value="${u}">หน่วยที่ ${u}</option>`).join('');
 }
 
-function getFiltered() {
+function applyFilters() {
     const g = document.getElementById('fGroup').value;
     const t = document.getElementById('fType').value;
-    const u = document.getElementById('fUnit').value;
-    return allData.filter(d => {
+    const filtered = allData.filter(d => {
         if (g && d.group != g) return false;
         if (t && d.type !== t) return false;
-        if (u && d.unit != u) return false;
         return true;
     });
+    render(filtered);
 }
 
-function applyFilters() { render(getFiltered()); }
 function clearFilters() {
     document.getElementById('fGroup').value = '';
     document.getElementById('fType').value = '';
-    document.getElementById('fUnit').value = '';
     applyFilters();
 }
 
-// ========================================================================
-// KPI CARDS
-// ========================================================================
+// ==========================================
+// RENDER COMPONENTS
+// ==========================================
 function renderKPI(data) {
-    const pct = getStats(data, 'pctDiff');
-    const ratio = getStats(data, 'asRatio');
-    const meanTag = pct.mean > 30 ? 'bg-red-100 text-red-600' : pct.mean > 20 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600';
-    const meanLabel = pct.mean > 30 ? 'เบี่ยงเบนสูง' : pct.mean > 20 ? 'ปานกลาง' : 'ใกล้เคียง';
-    const medTag = pct.median > 30 ? 'bg-red-100 text-red-600' : pct.median > 20 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600';
-    const medLabel = pct.median > 30 ? 'เบี่ยงเบนสูง' : pct.median > 20 ? 'ปานกลาง' : 'ใกล้เคียง';
+    const pArr = data.map(d => d.pctDiff);
+    const rArr = data.map(d => d.asRatio);
+    const mP = mean(pArr);
+    const medP = median(pArr);
+
+    const getTag = (v) => v > 30 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600';
 
     document.getElementById('kpiGrid').innerHTML = `
         <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-navy">
-            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">จำนวนแปลง · Total</div>
-            <div class="text-2xl md:text-3xl font-bold text-navy mt-1.5">${fmtInt(pct.count)}</div>
-            <div class="text-xs text-slate-500 mt-1">รายการที่วิเคราะห์</div>
+            <div class="text-xs font-semibold text-slate-500 uppercase">จำนวนแปลง</div>
+            <div class="text-2xl font-bold text-navy mt-1">${fmtInt(data.length)}</div>
         </div>
         <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gold">
-            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">มัธยฐาน % แตกต่าง</div>
-            <div class="text-2xl md:text-3xl font-bold text-gold-dark mt-1.5">${fmt(pct.median)}%</div>
-            <div class="text-xs text-slate-500 mt-1">Median Deviation</div>
-            <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-1.5 ${medTag}">${medLabel}</span>
+            <div class="text-xs font-semibold text-slate-500 uppercase">มัธยฐาน % แตกต่าง</div>
+            <div class="text-2xl font-bold text-gold-dark mt-1">${fmt(medP)}%</div>
         </div>
         <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-navy">
-            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ค่าเฉลี่ย % แตกต่าง</div>
-            <div class="text-2xl md:text-3xl font-bold text-navy mt-1.5">${fmt(pct.mean)}%</div>
-            <div class="text-xs text-slate-500 mt-1">Mean Deviation</div>
-            <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mt-1.5 ${meanTag}">${meanLabel}</span>
+            <div class="text-xs font-semibold text-slate-500 uppercase">ค่าเฉลี่ย % แตกต่าง</div>
+            <div class="text-2xl font-bold text-navy mt-1">${fmt(mP)}%</div>
         </div>
         <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gold">
-            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">มัธยฐาน AS_Ratio</div>
-            <div class="text-2xl md:text-3xl font-bold text-gold-dark mt-1.5">${fmt(ratio.median, 4)}</div>
-            <div class="text-xs text-slate-500 mt-1">เป้าหมาย ≈ 1.0</div>
+            <div class="text-xs font-semibold text-slate-500 uppercase">มัธยฐาน AS_Ratio</div>
+            <div class="text-2xl font-bold text-gold-dark mt-1">${fmt(median(rArr), 4)}</div>
         </div>
         <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-navy">
-            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ค่าเฉลี่ย AS_Ratio</div>
-            <div class="text-2xl md:text-3xl font-bold text-navy mt-1.5">${fmt(ratio.mean, 4)}</div>
-            <div class="text-xs text-slate-500 mt-1">Mean Ratio</div>
+            <div class="text-xs font-semibold text-slate-500 uppercase">ค่าเฉลี่ย AS_Ratio</div>
+            <div class="text-2xl font-bold text-navy mt-1">${fmt(mean(rArr), 4)}</div>
         </div>
         <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gold">
-            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ช่วง % แตกต่าง</div>
-            <div class="text-base md:text-lg font-bold text-gold-dark mt-1.5">${fmt(pct.min)}% - ${fmt(pct.max)}%</div>
-            <div class="text-xs text-slate-500 mt-1">Min · Max Range</div>
+            <div class="text-xs font-semibold text-slate-500 uppercase">Min - Max</div>
+            <div class="text-sm font-bold text-gold-dark mt-1">${fmt(Math.min(...pArr))}% - ${fmt(Math.max(...pArr))}%</div>
         </div>
     `;
 }
 
-// ========================================================================
-// LINE CHART — 3 prices comparison
-// ========================================================================
-function renderLine(data) {
-    const ctx = document.getElementById('lineChart').getContext('2d');
+function renderCharts(data) {
+    // Line Chart
+    const ctxL = document.getElementById('lineChart').getContext('2d');
     if (charts.line) charts.line.destroy();
-    const labels = data.map((_, i) => `#${i+1}`);
-    charts.line = new Chart(ctx, {
+    charts.line = new Chart(ctxL, {
         type: 'line',
         data: {
-            labels,
+            labels: data.map((_, i) => i + 1),
             datasets: [
-                { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#0A1F44', backgroundColor: 'rgba(10,31,68,0.08)', borderWidth: 2.5, tension: 0.3, fill: false, pointRadius: 2, pointHoverRadius: 5 },
-                { label: 'ราคาตลาดอ้างอิง', data: data.map(d => d.marketPrice), borderColor: '#D4AF37', borderWidth: 2.5, tension: 0.1, fill: false, pointRadius: 2, pointHoverRadius: 5 },
-                { label: 'ราคาประเมินใหม่', data: data.map(d => d.newAssessed), borderColor: '#A8862A', borderWidth: 2.5, borderDash: [6, 3], tension: 0.3, fill: false, pointRadius: 2, pointHoverRadius: 5 }
+                { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#0A1F44', tension: 0.3 },
+                { label: 'ราคาตลาด', data: data.map(d => d.marketPrice), borderColor: '#D4AF37', tension: 0.1 },
+                { label: 'ราคาประเมิน', data: data.map(d => d.newAssessed), borderColor: '#A8862A', borderDash: [5,5], tension: 0.3 }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { position: 'top', labels: { font: { weight: 600, size: 12 }, usePointStyle: true, padding: 14 } },
-                tooltip: {
-                    backgroundColor: '#0A1F44', titleColor: '#D4AF37', bodyColor: '#FFF', padding: 12,
-                    callbacks: {
-                        title: (items) => `รายการ ${items[0].label} · หน่วย ${data[items[0].dataIndex].unit} · ${data[items[0].dataIndex].type}`,
-                        label: (c) => `${c.dataset.label}: ${fmtInt(c.parsed.y)} บาท`
-                    }
-                }
-            },
-            scales: {
-                y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: v => fmtInt(v) } },
-                x: { grid: { display: false }, ticks: { maxTicksLimit: 20 } }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false }
     });
-}
 
-// ========================================================================
-// BAR CHART — % difference with mean & median lines
-// ========================================================================
-function renderBar(data) {
-    const ctx = document.getElementById('barChart').getContext('2d');
+    // Bar Chart
+    const ctxB = document.getElementById('barChart').getContext('2d');
     if (charts.bar) charts.bar.destroy();
-    const stats = getStats(data, 'pctDiff');
-    const colors = data.map(d => d.pctDiff <= 15 ? '#10B981' : d.pctDiff <= 25 ? '#D4AF37' : d.pctDiff <= 35 ? '#F59E0B' : '#EF4444');
-    charts.bar = new Chart(ctx, {
+    charts.bar = new Chart(ctxB, {
         type: 'bar',
         data: {
-            labels: data.map((_, i) => `#${i+1}`),
-            datasets: [
-                { label: '% ความแตกต่าง', data: data.map(d => d.pctDiff), backgroundColor: colors, borderRadius: 3, order: 2 },
-                { type: 'line', label: `Median (${fmt(stats.median)}%)`, data: data.map(() => stats.median), borderColor: '#D4AF37', borderWidth: 2.5, borderDash: [6, 3], pointRadius: 0, fill: false, order: 1 },
-                { type: 'line', label: `Mean (${fmt(stats.mean)}%)`, data: data.map(() => stats.mean), borderColor: '#0A1F44', borderWidth: 2, borderDash: [3, 3], pointRadius: 0, fill: false, order: 1 }
-            ]
+            labels: data.map((_, i) => i + 1),
+            datasets: [{
+                label: '% ความแตกต่าง',
+                data: data.map(d => d.pctDiff),
+                backgroundColor: data.map(d => d.pctDiff > 25 ? '#EF4444' : '#10B981')
+            }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'top', labels: { font: { weight: 600, size: 11 }, usePointStyle: true, padding: 10 } },
-                tooltip: {
-                    backgroundColor: '#0A1F44', titleColor: '#D4AF37', bodyColor: '#FFF',
-                    callbacks: {
-                        title: (items) => `รายการ ${items[0].label} · ${data[items[0].dataIndex].type}`,
-                        label: (c) => {
-                            if (c.dataset.type === 'line') return c.dataset.label;
-                            const v = c.parsed.y;
-                            const status = v <= 15 ? '✓ ใกล้เคียงตลาด' : v <= 25 ? '⚠ ปานกลาง' : v <= 35 ? '⚠ เบี่ยงเบน' : '✗ สูงมาก';
-                            return [`${fmt(v)}%`, status];
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: v => v + '%' } },
-                x: { grid: { display: false }, ticks: { maxTicksLimit: 25 } }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 }
 
-// ========================================================================
-// UNIT CHART — Mean vs Median by Unit
-// ========================================================================
-function renderUnitChart(data) {
-    const ctx = document.getElementById('unitChart').getContext('2d');
-    if (charts.unit) charts.unit.destroy();
-    const units = [...new Set(data.map(d => d.unit))].sort((a,b) => a-b);
-    const meanArr = units.map(u => mean(data.filter(d => d.unit === u).map(d => d.pctDiff)));
-    const medArr = units.map(u => median(data.filter(d => d.unit === u).map(d => d.pctDiff)));
-    charts.unit = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: units.map(u => `หน่วย ${u}`),
-            datasets: [
-                { label: 'Mean (เฉลี่ย)', data: meanArr, backgroundColor: '#0A1F44', borderRadius: 4 },
-                { label: 'Median (มัธยฐาน)', data: medArr, backgroundColor: '#D4AF37', borderRadius: 4 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'top', labels: { font: { weight: 600 }, usePointStyle: true } },
-                tooltip: { backgroundColor: '#0A1F44', titleColor: '#D4AF37', bodyColor: '#FFF', callbacks: { label: c => `${c.dataset.label}: ${fmt(c.parsed.y)}%` } }
-            },
-            scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { callback: v => v + '%' } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
-}
-
-// ========================================================================
-// TYPE CHART — Count + Mean line
-// ========================================================================
-function renderTypeChart(data) {
-    const ctx = document.getElementById('typeChart').getContext('2d');
-    if (charts.type) charts.type.destroy();
-    const types = [...new Set(data.map(d => d.type))];
-    const counts = types.map(t => data.filter(d => d.type === t).length);
-    const meanPct = types.map(t => mean(data.filter(d => d.type === t).map(d => d.pctDiff)));
-    charts.type = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: types,
-            datasets: [
-                { label: 'จำนวนแปลง', data: counts, backgroundColor: '#0A1F44', yAxisID: 'y', borderRadius: 4 },
-                { type: 'line', label: '% แตกต่างเฉลี่ย', data: meanPct, borderColor: '#D4AF37', backgroundColor: '#D4AF37', borderWidth: 3, pointRadius: 5, pointBackgroundColor: '#D4AF37', pointBorderColor: '#0A1F44', pointBorderWidth: 2, yAxisID: 'y1', tension: 0.3 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'top', labels: { font: { weight: 600 }, usePointStyle: true } },
-                tooltip: { backgroundColor: '#0A1F44', titleColor: '#D4AF37', bodyColor: '#FFF' }
-            },
-            scales: {
-                y: { beginAtZero: true, position: 'left', title: { display: true, text: 'จำนวนแปลง', font: { weight: 600 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-                y1: { beginAtZero: true, position: 'right', title: { display: true, text: '% แตกต่าง', font: { weight: 600 } }, grid: { display: false }, ticks: { callback: v => v + '%' } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
-}
-
-// ========================================================================
-// TABLE
-// ========================================================================
 function renderTable(data) {
-    document.getElementById('tableDesc').textContent = `แสดง ${data.length} จาก ${allData.length} รายการ`;
-    document.getElementById('tBody').innerHTML = data.map((d, i) => {
-        let badge = 'bg-emerald-100 text-emerald-600', label = 'ใกล้เคียง';
-        if (d.pctDiff > 35) { badge = 'bg-red-100 text-red-600'; label = 'สูงมาก'; }
-        else if (d.pctDiff > 25) { badge = 'bg-amber-100 text-amber-600'; label = 'เบี่ยงเบน'; }
-        else if (d.pctDiff > 15) { badge = 'bg-amber-100 text-amber-600'; label = 'ปานกลาง'; }
-        const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
-        return `<tr class="${rowBg} hover:bg-amber-50 border-b border-slate-200">
+    document.getElementById('tBody').innerHTML = data.map((d, i) => `
+        <tr class="hover:bg-amber-50 border-b border-slate-200">
             <td class="px-3 py-2 text-xs">${i+1}</td>
-            <td class="px-3 py-2 text-xs">${d.office}</td>
-            <td class="px-3 py-2 text-xs num text-right">${d.group}</td>
-            <td class="px-3 py-2 text-xs num text-right">${d.unit}</td>
+            <td class="px-3 py-2 text-xs">${d.group}</td>
             <td class="px-3 py-2 text-xs">${d.type}</td>
-            <td class="px-3 py-2 text-xs num text-right">${fmtInt(d.tradePrice)}</td>
-            <td class="px-3 py-2 text-xs num text-right">${fmtInt(d.marketPrice)}</td>
-            <td class="px-3 py-2 text-xs num text-right">${fmtInt(d.newAssessed)}</td>
-            <td class="px-3 py-2 text-xs num text-right">${fmt(d.asRatio, 4)}</td>
-            <td class="px-3 py-2 text-xs num text-right font-bold">${fmt(d.pctDiff)}%</td>
-            <td class="px-3 py-2 text-xs"><span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${badge}">${label}</span></td>
-        </tr>`;
-    }).join('');
+            <td class="px-3 py-2 text-xs text-right num">${fmtInt(d.tradePrice)}</td>
+            <td class="px-3 py-2 text-xs text-right num">${fmtInt(d.marketPrice)}</td>
+            <td class="px-3 py-2 text-xs text-right num">${fmtInt(d.newAssessed)}</td>
+            <td class="px-3 py-2 text-xs text-right font-bold ${d.pctDiff > 25 ? 'text-red-600' : 'text-emerald-600'}">${fmt(d.pctDiff)}%</td>
+        </tr>
+    `).join('');
 }
 
-// ========================================================================
-// MAIN RENDER
-// ========================================================================
 function render(data) {
-    if (!data.length) {
-        document.getElementById('kpiGrid').innerHTML = '<div class="col-span-full bg-white rounded-xl shadow-sm p-5 text-center text-slate-500">ไม่มีข้อมูลตามตัวกรอง</div>';
-        Object.values(charts).forEach(c => c && c.destroy());
-        document.getElementById('tBody').innerHTML = '<tr><td colspan="11" class="text-center py-6 text-slate-500">ไม่มีข้อมูล</td></tr>';
-        return;
-    }
+    if (!data.length) return;
     renderKPI(data);
-    renderLine(data);
-    renderBar(data);
-    renderUnitChart(data);
-    renderTypeChart(data);
+    renderCharts(data);
     renderTable(data);
-    saveLocal();
 }
 
-// ========================================================================
-// STORAGE
-// ========================================================================
-function saveLocal() { try { localStorage.setItem('marketDeviationData', JSON.stringify(allData)); } catch(e) {} }
-function loadLocal() {
-    try { const d = localStorage.getItem('marketDeviationData'); return d ? JSON.parse(d) : null; } catch(e) { return null; }
-}
-function loadFromURL() {
-    const h = window.location.hash;
-    if (h.startsWith('#data=')) {
-        try { return JSON.parse(decodeURIComponent(escape(atob(h.substring(6))))); } catch(e) { return null; }
-    }
-    return null;
-}
-
-// ========================================================================
-// FILE UPLOAD
-// ========================================================================
-const uploadArea = document.getElementById('uploadArea');
-const fileInput = document.getElementById('fileInput');
-uploadArea.addEventListener('click', () => fileInput.click());
-uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('bg-amber-100', 'border-navy'); });
-uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('bg-amber-100', 'border-navy'));
-uploadArea.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadArea.classList.remove('bg-amber-100', 'border-navy');
-    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
-
-function handleFile(file) {
-    Papa.parse(file, {
-        skipEmptyLines: true,
-        complete: (results) => {
-            const rows = results.data.slice(1);
-            const data = rows.map(r => {
-                if (r.length < 10) return null;
-                const office = String(r[0] || '').trim();
-                const group = parseInt(r[1]);
-                const tradePrice = parseFloat(r[2]);
-                const unit = parseInt(r[3]);
-                const marketPrice = parseFloat(r[4]);
-                const depth = parseFloat(r[5]);
-                const type = String(r[6] || '').trim();
-                const newAssessed = parseFloat(r[7]);
-                const asRatio = parseFloat(r[8]);
-                const pctDiff = parseFloat(String(r[9] || '').replace('%', '').trim());
-                if (!office || isNaN(tradePrice) || isNaN(pctDiff)) return null;
-                return { office, group, tradePrice, unit, marketPrice, depth, type, newAssessed, asRatio, pctDiff };
-            }).filter(d => d !== null);
-            if (!data.length) { toast('ไม่พบข้อมูลที่ใช้ได้ในไฟล์'); return; }
-            allData = data;
-            setupFilters();
-            applyFilters();
-            toast(`โหลด ${data.length} รายการเรียบร้อย`);
-        },
-        error: () => toast('ไม่สามารถอ่านไฟล์ได้')
-    });
-}
-
-// ========================================================================
-// EXPORT / RESET
-// ========================================================================
-function exportCSV() {
-    const data = getFiltered();
-    if (!data.length) { toast('ไม่มีข้อมูลให้ส่งออก'); return; }
-    let csv = 'สำนักงานที่ดิน,กลุ่มที่ดิน,ราคาซื้อขาย,หน่วยที่ดิน,ราคาตลาด,ความลึก,ประเภท,ราคาประเมินใหม่,AS_Ratio,%ความแตกต่าง\n';
-    data.forEach(d => { csv += `${d.office},${d.group},${d.tradePrice},${d.unit},${d.marketPrice},${d.depth},${d.type},${d.newAssessed},${d.asRatio},${d.pctDiff}%\n`; });
-    const stats = getStats(data, 'pctDiff');
-    csv += `\nสถิติสรุป (% ความแตกต่าง)\nMean,${stats.mean.toFixed(2)}%\nMedian,${stats.median.toFixed(2)}%\nMin,${stats.min.toFixed(2)}%\nMax,${stats.max.toFixed(2)}%\n`;
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'market_deviation_export.csv'; a.click();
-    toast('ส่งออก CSV เรียบร้อย');
-}
-
-function resetData() {
-    if (!confirm('ยืนยันรีเซ็ตข้อมูลกลับเป็นข้อมูลตั้งต้น?')) return;
-    allData = [...EMBEDDED_DATA];
-    localStorage.removeItem('marketDeviationData');
-    setupFilters();
-    clearFilters();
-    toast('รีเซ็ตข้อมูลเรียบร้อย');
-}
-
-// ========================================================================
-// SHARE
-// ========================================================================
-function openShare() {
-    try {
-        const compressed = btoa(unescape(encodeURIComponent(JSON.stringify(allData))));
-        const url = window.location.href.split('#')[0] + '#data=' + compressed;
-        document.getElementById('shareBox').textContent = url;
-        document.getElementById('shareModal').classList.remove('hidden');
-        document.getElementById('shareModal').classList.add('flex');
-    } catch(e) { toast('ไม่สามารถสร้างลิงก์ได้'); }
-}
-function closeShare() {
-    document.getElementById('shareModal').classList.add('hidden');
-    document.getElementById('shareModal').classList.remove('flex');
-}
-function copyLink() {
-    const text = document.getElementById('shareBox').textContent;
-    navigator.clipboard.writeText(text).then(() => toast('คัดลอกลิงก์เรียบร้อย'));
-}
-function downloadHTML() {
-    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'index.html'; a.click();
-    toast('ดาวน์โหลด HTML เรียบร้อย');
-}
-
-// ========================================================================
-// TOAST
-// ========================================================================
 function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -628,21 +316,23 @@ function toast(msg) {
     setTimeout(() => {
         t.classList.remove('toast-show');
         t.classList.add('toast-enter');
-    }, 2500);
+    }, 3000);
 }
 
-// ========================================================================
-// INIT
-// ========================================================================
-window.addEventListener('DOMContentLoaded', () => {
-    const urlData = loadFromURL();
-    const localData = loadLocal();
-    if (urlData && urlData.length) allData = urlData;
-    else if (localData && localData.length) allData = localData;
-    setupFilters();
-    applyFilters();
-});
-</script>
+function exportCSV() {
+    let csv = 'กลุ่ม,ประเภท,ราคาซื้อขาย,ราคาตลาด,ราคาประเมิน,%แตกต่าง\n';
+    allData.forEach(d => {
+        csv += `${d.group},${d.type},${d.tradePrice},${d.marketPrice},${d.newAssessed},${d.pctDiff}\n`;
+    });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'dashboard_export.csv'; a.click();
+}
 
+// INIT
+window.addEventListener('DOMContentLoaded', fetchDataFromGitHub);
+
+</script>
 </body>
 </html>
