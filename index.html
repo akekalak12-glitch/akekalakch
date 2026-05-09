@@ -22,30 +22,42 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">กลุ่มที่ดิน</label>
-                    <select id="groupFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white focus:ring-2 focus:ring-blue-400 outline-none">
+                    <select id="groupFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white outline-none">
                         <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">ประเภท</label>
-                    <select id="typeFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white focus:ring-2 focus:ring-blue-400 outline-none">
+                    <select id="typeFilter" onchange="applyFilters()" class="w-full p-2 rounded bg-blue-900 border-none text-white outline-none">
                         <option value="all">ทั้งหมด</option>
                     </select>
                 </div>
                 <button onclick="resetFilters()" class="w-full mt-4 bg-blue-600 hover:bg-blue-500 py-2 rounded font-semibold transition">ล้างตัวกรอง</button>
-                <div id="status" class="text-sm font-bold text-yellow-300 mt-6 border border-blue-400 p-2 rounded text-center">กำลังโหลดข้อมูล...</div>
+                
+                <div class="mt-8 p-3 bg-black bg-opacity-30 rounded-lg text-[10px] font-mono leading-tight">
+                    <p class="text-gray-400 uppercase mb-1">ระบบตรวจสอบสถานะ:</p>
+                    <div id="debugLog" class="text-green-400 space-y-1">
+                        <div>> กำลังเตรียมระบบ...</div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="flex-1 p-8">
-            <header class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-800">สรุปความแตกต่างราคาตลาด</h1>
-                <p class="text-gray-500">ข้อมูลจาก GitHub</p>
+            <header class="mb-8 flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">สรุปความแตกต่างราคาตลาด</h1>
+                    <p class="text-gray-500">สำนักงานที่ดินเมืองยะลา (Live Data)</p>
+                </div>
+                <div id="loadingPulse" class="flex items-center space-x-2 text-blue-600 animate-pulse">
+                    <div class="w-3 h-3 bg-blue-600 rounded-full"></div>
+                    <span class="text-sm font-bold">กำลังเชื่อมต่อ GitHub...</span>
+                </div>
             </header>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div class="card p-6 border-l-4 border-blue-600">
-                    <p class="text-sm text-gray-500 font-bold uppercase">จำนวนแปลงที่ดึงได้</p>
+                    <p class="text-sm text-gray-500 font-bold uppercase">จำนวนทั้งหมด</p>
                     <h3 id="totalCount" class="text-3xl font-bold text-gray-800">0</h3>
                 </div>
                 <div class="card p-6 border-l-4 border-green-500">
@@ -65,11 +77,11 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <div class="card p-6">
                     <h4 class="font-bold mb-4 text-gray-700">เปรียบเทียบราคาซื้อขายและราคาตลาด</h4>
-                    <div class="chart-container"><canvas id="priceChart"></canvas></div>
+                    <div id="priceChartContainer" class="chart-container"><canvas id="priceChart"></canvas></div>
                 </div>
                 <div class="card p-6">
                     <h4 class="font-bold mb-4 text-gray-700">เปอร์เซ็นต์ความแตกต่างรายแปลง</h4>
-                    <div class="chart-container"><canvas id="diffChart"></canvas></div>
+                    <div id="diffChartContainer" class="chart-container"><canvas id="diffChart"></canvas></div>
                 </div>
             </div>
 
@@ -85,7 +97,9 @@
                                 <th class="px-6 py-4 text-sm font-bold text-gray-600 text-right">% แตกต่าง</th>
                             </tr>
                         </thead>
-                        <tbody id="dataTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
+                        <tbody id="dataTableBody" class="divide-y divide-gray-100 text-sm">
+                            <tr><td colspan="5" class="p-10 text-center text-gray-400 italic">รอการโหลดข้อมูล...</td></tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -97,83 +111,109 @@
         let charts = {};
         const CSV_URL = 'https://raw.githubusercontent.com/akekalak12-glitch/akekalakch/main/data.csv';
 
+        function log(msg, isError = false) {
+            const container = document.getElementById('debugLog');
+            const div = document.createElement('div');
+            div.className = isError ? 'text-red-400' : 'text-green-400';
+            div.textContent = `> ${msg}`;
+            container.appendChild(div);
+            console.log(msg);
+        }
+
         async function init() {
-            const status = document.getElementById('status');
             try {
-                // เติม ?v= เวลาปัจจุบัน เพื่อป้องกัน Browser ดึงไฟล์เก่าจาก Cache มาแสดง
-                const response = await fetch(CSV_URL + '?v=' + new Date().getTime());
-                if (!response.ok) throw new Error('ไม่สามารถเข้าถึงไฟล์ GitHub ได้');
+                log("เริ่มดึงข้อมูลจาก GitHub...");
+                // เพิ่ม cache buster
+                const response = await fetch(CSV_URL + '?nocache=' + new Date().getTime());
                 
-                const buffer = await response.arrayBuffer();
-                
-                // ถอดรหัสภาษาไทย (แก้ปัญหาตัวยึกยือจากไฟล์ CSV ของ Excel)
-                let csvText = new TextDecoder('utf-8').decode(buffer);
-                if (csvText.includes('')) {
-                    csvText = new TextDecoder('windows-874').decode(buffer);
+                if (!response.ok) {
+                    throw new Error(`โหลดไฟล์ไม่ได้ (HTTP ${response.status})`);
                 }
                 
-                Papa.parse(csvText, {
-                    header: false,
+                log("เชื่อมต่อไฟล์สำเร็จ กำลังอ่านเนื้อหา...");
+                const arrayBuffer = await response.arrayBuffer();
+                
+                // ลองถอดรหัสทั้ง UTF-8 และ Windows-874
+                let decoder = new TextDecoder('utf-8');
+                let text = decoder.decode(arrayBuffer);
+                
+                // ถ้าเจอตัวยึกยือในหัวตาราง ให้สลับไปใช้ Windows-874 (สำหรับไฟล์จาก Excel ไทย)
+                if (text.includes('')) {
+                    log("ตรวจพบปัญหา Encoding สลับไปใช้ Windows-874...");
+                    decoder = new TextDecoder('windows-874');
+                    text = decoder.decode(arrayBuffer);
+                }
+
+                log("กำลังวิเคราะห์โครงสร้าง CSV...");
+                Papa.parse(text, {
+                    header: true,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        if (results.data.length <= 1) {
-                            status.textContent = "⚠️ ไม่พบข้อมูลในไฟล์ หรือไฟล์ว่าง";
-                            return;
+                        log(`ดึงข้อมูลดิบได้ ${results.data.length} แถว`);
+                        
+                        if (results.data.length === 0) {
+                            throw new Error("ไฟล์ CSV ไม่มีข้อมูลข้างใน");
                         }
 
-                        // ค้นหาตำแหน่งคอลัมน์อัตโนมัติจากคำค้นหา (ฉลาดขึ้น ไม่ต้องพึ่ง Index)
-                        const headers = results.data[0].map(h => String(h).trim().toLowerCase());
-                        const findCol = (keywords) => {
-                            for(let kw of keywords) {
-                                const idx = headers.findIndex(h => h.includes(kw));
-                                if(idx !== -1) return idx;
-                            }
-                            return -1;
+                        // ตรวจสอบชื่อคอลัมน์จริงที่ระบบเห็น
+                        const firstRowKeys = Object.keys(results.data[0]);
+                        log(`คอลัมน์ที่พบ: ${firstRowKeys.length} ช่อง`);
+
+                        // ฟังก์ชันช่วยหาคอลัมน์แบบยืดหยุ่น (ไม่สนใจเว้นวรรค)
+                        const findKey = (keywords) => {
+                            return firstRowKeys.find(k => keywords.some(kw => k.trim().includes(kw)));
                         };
 
-                        const idxGroup = findCol(["กลุ่ม", "group"]);
-                        const idxType = findCol(["ประเภท", "type"]);
-                        const idxTrade = findCol(["ซื้อขาย", "trade"]);
-                        const idxMarket = findCol(["ราคาของหน่วย", "ตลาด", "market"]);
-                        const idxDiff = findCol(["แตกต่าง", "diff"]);
-                        const idxRatio = findCol(["as_ratio", "as ratio"]);
+                        const keys = {
+                            group: findKey(["รหัสกลุ่มที่ดิน", "กลุ่ม"]),
+                            type: findKey(["ประเภท"]),
+                            trade: findKey(["ราคาซื้อขายในช่วง 0.6 - 0.9", "ซื้อขาย"]),
+                            market: findKey(["ราคาของหน่วย", "ตลาด"]),
+                            diff: findKey(["ความแตกต่างจากราคาตลาด", "แตกต่าง"]),
+                            ratio: findKey(["AS_Ratio_New", "Ratio"])
+                        };
 
-                        const dataRows = results.data.slice(1); // ข้ามหัวตาราง
+                        // แสดงสถานะการหาคอลัมน์
+                        Object.entries(keys).forEach(([k, v]) => {
+                            if (!v) log(`⚠️ หาคอลัมน์ '${k}' ไม่พบ!`, true);
+                        });
 
-                        rawData = dataRows.map(row => {
-                            const cleanNum = (val) => {
-                                if (!val) return 0;
-                                const str = String(val).replace(/,/g, '').replace(/%/g, '').trim();
-                                const num = parseFloat(str);
-                                return isNaN(num) ? 0 : num;
+                        rawData = results.data.map((item, index) => {
+                            const clean = (val) => {
+                                if (val === undefined || val === null) return 0;
+                                return parseFloat(String(val).replace(/,/g, '').replace(/%/g, '').trim()) || 0;
                             };
 
                             return {
-                                group: idxGroup !== -1 ? row[idxGroup] : "ไม่พบข้อมูล",
-                                type: idxType !== -1 ? row[idxType] : "ไม่พบข้อมูล",
-                                tradePrice: idxTrade !== -1 ? cleanNum(row[idxTrade]) : 0,
-                                marketPrice: idxMarket !== -1 ? cleanNum(row[idxMarket]) : 0,
-                                pctDiff: idxDiff !== -1 ? cleanNum(row[idxDiff]) : 0,
-                                asRatio: idxRatio !== -1 ? cleanNum(row[idxRatio]) : 0
+                                group: item[keys.group] || "-",
+                                type: item[keys.type] || "-",
+                                tradePrice: clean(item[keys.trade]),
+                                marketPrice: clean(item[keys.market]),
+                                pctDiff: clean(item[keys.diff]),
+                                asRatio: clean(item[keys.ratio])
                             };
-                        });
+                        }).filter(d => d.tradePrice > 0 || d.marketPrice > 0);
 
-                        // รอบนี้ผม 'เอาการลบข้อมูลทิ้ง' ออกไปหมดเลย เพื่อให้ตารางแสดงผลออกมาทุกบรรทัด
-                        setupFilters();
-                        updateDashboard(rawData);
-                        status.className = "text-sm font-bold text-green-300 mt-6 border border-green-400 p-2 rounded text-center bg-blue-800";
-                        status.textContent = "✅ โหลดสำเร็จ " + rawData.length + " รายการ";
+                        log(`กรองข้อมูลสำเร็จ เหลือ ${rawData.length} รายการใช้งานได้`);
+                        
+                        if (rawData.length > 0) {
+                            document.getElementById('loadingPulse').classList.add('hidden');
+                            setupFilters();
+                            updateDashboard(rawData);
+                            log("✅ ทุกระบบพร้อมทำงาน!");
+                        } else {
+                            log("❌ ข้อมูลหายไประหว่างการกรอง!", true);
+                        }
                     }
                 });
             } catch (error) {
-                console.error("Fetch Error:", error);
-                status.className = "text-sm font-bold text-red-300 mt-6 border border-red-400 p-2 rounded text-center bg-blue-800";
-                status.textContent = "❌ เกิดข้อผิดพลาด: " + error.message;
+                log(`ERROR: ${error.message}`, true);
+                document.getElementById('loadingPulse').innerHTML = `<span class="text-red-500 font-bold">❌ ${error.message}</span>`;
             }
         }
 
         function setupFilters() {
-            const groups = [...new Set(rawData.map(d => d.group))].sort((a,b) => String(a).localeCompare(String(b)));
+            const groups = [...new Set(rawData.map(d => d.group))].sort();
             const types = [...new Set(rawData.map(d => d.type))].sort();
             
             const gFilter = document.getElementById('groupFilter');
@@ -260,6 +300,10 @@
 
         function updateTable(data) {
             const tbody = document.getElementById('dataTableBody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-400">ไม่มีข้อมูลที่ตรงตามเงื่อนไข</td></tr>';
+                return;
+            }
             tbody.innerHTML = data.map(d => `
                 <tr class="hover:bg-gray-50 border-b border-gray-100">
                     <td class="px-6 py-3">${d.group}</td>
