@@ -3,129 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Dashboard - รายงานวิเคราะห์ราคาที่ดิน</title>
+    <title>Executive Dashboard - รายงานวิเคราะห์ราคาที่ดิน V3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f4f7fa; }
-        .card { background: white; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); border: 1px solid rgba(226, 232, 240, 0.8); }
         .sidebar { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); color: white; }
-        .stat-value { letter-spacing: -0.025em; }
         .chart-container { position: relative; height: 380px; width: 100%; }
-        /* Custom Scrollbar */
+        .map-container { position: relative; height: 500px; width: 100%; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="text-slate-800">
     <div class="flex flex-col lg:flex-row min-h-screen">
-        <aside class="sidebar w-full lg:w-80 p-8 shrink-0 shadow-2xl">
-            <div class="flex items-center space-x-3 mb-10 pb-6 border-b border-slate-700">
-                <div class="bg-blue-500 p-2 rounded-lg shadow-lg">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                </div>
-                <h2 class="text-xl font-bold tracking-tight">LAND ANALYTICS</h2>
+        <aside class="sidebar w-full lg:w-72 p-6 shrink-0 shadow-2xl z-10">
+            <div class="flex items-center space-x-3 mb-8 pb-4 border-b border-slate-700">
+                <div class="bg-blue-500 p-2 rounded-lg"><span class="text-xl">🗺️</span></div>
+                <h2 class="text-lg font-bold tracking-tight">LAND ANALYTICS</h2>
             </div>
 
-            <div class="space-y-6">
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">พื้นที่จังหวัด</label>
-                    <select id="provinceFilter" onchange="applyFilters()" class="w-full bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                        <option value="all">ทุกจังหวัด</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">สำนักงานที่ดิน</label>
-                    <select id="officeFilter" onchange="applyFilters()" class="w-full bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                        <option value="all">ทุกสำนักงาน</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">กลุ่มที่ดิน</label>
-                    <select id="groupFilter" onchange="applyFilters()" class="w-full bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                        <option value="all">ทุกกลุ่ม</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">ประเภทที่ดิน</label>
-                    <select id="typeFilter" onchange="applyFilters()" class="w-full bg-slate-800 border-none text-white p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                        <option value="all">ทุกประเภท</option>
-                    </select>
-                </div>
-
-                <button onclick="resetFilters()" class="w-full mt-6 bg-slate-700 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95">✕ ล้างค่าตัวกรอง</button>
-                
-                <div class="mt-10 p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-2">System Logs</p>
-                    <div id="debugLog" class="text-[11px] text-blue-400 font-mono space-y-1 overflow-y-auto max-h-40"></div>
-                </div>
+            <div class="space-y-5">
+                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">จังหวัด</label>
+                    <select id="provinceFilter" onchange="applyFilters()" class="w-full bg-slate-800 text-white p-2.5 rounded-lg outline-none"><option value="all">ทั้งหมด</option></select></div>
+                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">สำนักงาน</label>
+                    <select id="officeFilter" onchange="applyFilters()" class="w-full bg-slate-800 text-white p-2.5 rounded-lg outline-none"><option value="all">ทั้งหมด</option></select></div>
+                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">กลุ่มที่ดิน</label>
+                    <select id="groupFilter" onchange="applyFilters()" class="w-full bg-slate-800 text-white p-2.5 rounded-lg outline-none"><option value="all">ทั้งหมด</option></select></div>
+                <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">ประเภท</label>
+                    <select id="typeFilter" onchange="applyFilters()" class="w-full bg-slate-800 text-white p-2.5 rounded-lg outline-none"><option value="all">ทั้งหมด</option></select></div>
+                <button onclick="resetFilters()" class="w-full mt-4 bg-slate-700 hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition">✕ ล้างค่า</button>
             </div>
         </aside>
 
-        <main class="flex-1 p-6 lg:p-10">
-            <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-                <div>
-                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">สรุปความแตกต่างราคาตลาด</h1>
-                    <p class="text-slate-500 font-medium">ระบบวิเคราะห์เปรียบเทียบข้อมูลราคาประเมินและราคาซื้อขายจริง</p>
-                </div>
-                <div id="dataBadge" class="bg-blue-50 text-blue-700 px-4 py-2 rounded-full font-bold text-sm border border-blue-100 shadow-sm">
-                    กำลังดึงข้อมูล...
-                </div>
+        <main class="flex-1 p-6 lg:p-8 overflow-x-hidden">
+            <header class="mb-8">
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">สรุปความแตกต่างราคาตลาดเชิงลึก</h1>
+                <p class="text-slate-500 font-medium">จัดกลุ่มตามหน่วยที่ดิน พร้อมสถิติ Mean / Median</p>
             </header>
 
-            <div id="kpiGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                </div>
+            <div id="countKpiGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
 
-            <section class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
-                <div class="xl:col-span-2 card p-8">
-                    <div class="flex justify-between items-center mb-6">
-                        <h4 class="font-bold text-lg text-slate-800 border-l-4 border-blue-600 pl-4">เปรียบเทียบราคาประเมินใหม่ และ ราคาซื้อขาย</h4>
-                        <div class="flex space-x-4 text-xs font-bold uppercase text-slate-400">
-                            <span class="flex items-center"><span class="w-3 h-3 bg-blue-600 rounded-full mr-2"></span>ประเมินใหม่</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>ซื้อขายจริง</span>
-                        </div>
-                    </div>
+            <div id="statKpiGrid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
+
+            <div class="card p-6 mb-8 bg-white">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold text-lg text-slate-800 border-l-4 border-blue-600 pl-3">แผนที่ความแตกต่างราคาตลาด (% ต่างมัธยฐาน รายจังหวัด)</h4>
+                </div>
+                <div id="mapChart" class="map-container"></div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+                <div class="card p-6">
+                    <h4 class="font-bold text-lg mb-2 border-l-4 border-indigo-600 pl-3">เปรียบเทียบมัธยฐาน ราคาประเมิน vs ซื้อขาย</h4>
+                    <p class="text-xs text-slate-500 mb-4 ml-4">จัดกลุ่มตาม: กลุ่มที่ดิน + หน่วยที่ดิน (Hover ดูค่า % ต่าง และ AS Ratio)</p>
                     <div class="chart-container"><canvas id="priceChart"></canvas></div>
                 </div>
-
-                <div class="card p-8 bg-slate-900 text-white">
-                    <h4 class="font-bold text-lg mb-6 border-l-4 border-blue-400 pl-4">สถิติเชิงลึก (Detailed Stats)</h4>
-                    <div id="detailedStats" class="space-y-6">
-                        </div>
-                </div>
-            </section>
-
-            <div class="grid grid-cols-1 gap-8 mb-10">
-                <div class="card p-8">
-                    <h4 class="font-bold text-lg text-slate-800 mb-6 border-l-4 border-emerald-500 pl-4">% ความแตกต่าง รายหน่วยที่ดิน</h4>
+                <div class="card p-6">
+                    <h4 class="font-bold text-lg mb-2 border-l-4 border-emerald-500 pl-3">% ความแตกต่างมัธยฐาน</h4>
+                    <p class="text-xs text-slate-500 mb-4 ml-4">จัดกลุ่มตาม: กลุ่มที่ดิน + หน่วยที่ดิน</p>
                     <div class="chart-container"><canvas id="diffChart"></canvas></div>
                 </div>
             </div>
 
             <div class="card overflow-hidden">
-                <div class="px-8 py-5 border-b bg-slate-50 flex justify-between items-center">
-                    <h4 class="font-bold text-slate-800">รายละเอียดรายแปลงทั้งหมด</h4>
-                    <button onclick="exportCSV()" class="text-xs bg-white border border-slate-200 hover:bg-slate-100 px-4 py-2 rounded-lg font-bold shadow-sm transition">💾 Export CSV</button>
+                <div class="px-6 py-4 border-b bg-slate-50 flex justify-between items-center">
+                    <h4 class="font-bold text-slate-800">ข้อมูลรายแปลงทั้งหมด (Raw Data)</h4>
+                    <span id="recordCount" class="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full"></span>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto max-h-[500px]">
                     <table class="w-full text-left">
-                        <thead class="bg-slate-800 text-slate-200 text-[11px] font-bold uppercase tracking-wider">
+                        <thead class="bg-slate-800 text-slate-200 text-xs font-bold uppercase sticky top-0 z-10">
                             <tr>
-                                <th class="px-8 py-4">จังหวัด</th>
-                                <th class="px-8 py-4">สำนักงาน</th>
-                                <th class="px-8 py-4">กลุ่ม</th>
-                                <th class="px-8 py-4">หน่วย</th>
-                                <th class="px-8 py-4 text-right">ราคาซื้อขาย</th>
-                                <th class="px-8 py-4 text-right">ประเมินใหม่</th>
-                                <th class="px-8 py-4 text-right">% ต่าง</th>
+                                <th class="px-6 py-4">จังหวัด</th>
+                                <th class="px-6 py-4">สำนักงาน</th>
+                                <th class="px-6 py-4">กลุ่ม</th>
+                                <th class="px-6 py-4">หน่วย</th>
+                                <th class="px-6 py-4">ประเภท</th>
+                                <th class="px-6 py-4 text-right">ราคาซื้อขาย</th>
+                                <th class="px-6 py-4 text-right">ประเมินใหม่</th>
+                                <th class="px-6 py-4 text-right">% ต่าง</th>
                             </tr>
                         </thead>
-                        <tbody id="dataTableBody" class="divide-y divide-slate-100 text-sm">
-                            </tbody>
+                        <tbody id="dataTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
                     </table>
                 </div>
             </div>
@@ -134,30 +99,25 @@
 
     <script>
         let rawData = [];
+        let filteredData = [];
+        let aggregatedData = [];
         let charts = {};
+        let mapInstance = null;
         const CSV_URL = 'https://raw.githubusercontent.com/akekalak12-glitch/akekalakch/main/data.csv';
 
-        function log(msg) {
-            const el = document.getElementById('debugLog');
-            el.innerHTML += `<div>> ${msg}</div>`;
-            el.scrollTop = el.scrollHeight;
-        }
+        // พจนานุกรมแปลงชื่อจังหวัดไทยเป็นอังกฤษสำหรับ ECharts GeoJSON
+        const thaiToEngProv = {"กรุงเทพมหานคร":"Bangkok","กระบี่":"Krabi","กาญจนบุรี":"Kanchanaburi","กาฬสินธุ์":"Kalasin","กำแพงเพชร":"Kamphaeng Phet","ขอนแก่น":"Khon Kaen","จันทบุรี":"Chanthaburi","ฉะเชิงเทรา":"Chachoengsao","ชลบุรี":"Chon Buri","ชัยนาท":"Chai Nat","ชัยภูมิ":"Chaiyaphum","ชุมพร":"Chumphon","เชียงราย":"Chiang Rai","เชียงใหม่":"Chiang Mai","ตรัง":"Trang","ตราด":"Trat","ตาก":"Tak","นครนายก":"Nakhon Nayok","นครปฐม":"Nakhon Pathom","นครพนม":"Nakhon Phanom","นครราชสีมา":"Nakhon Ratchasima","นครศรีธรรมราช":"Nakhon Si Thammarat","นครสวรรค์":"Nakhon Sawan","นนทบุรี":"Nonthaburi","นราธิวาส":"Narathiwat","น่าน":"Nan","บึงกาฬ":"Bueng Kan","บุรีรัมย์":"Buri Ram","ปทุมธานี":"Pathum Thani","ประจวบคีรีขันธ์":"Prachuap Khiri Khan","ปราจีนบุรี":"Prachin Buri","ปัตตานี":"Pattani","พระนครศรีอยุธยา":"Phra Nakhon Si Ayutthaya","พะเยา":"Phayao","พังงา":"Phangnga","พัทลุง":"Phatthalung","พิจิตร":"Phichit","พิษณุโลก":"Phitsanulok","เพชรบุรี":"Phetchaburi","เพชรบูรณ์":"Phetchabun","แพร่":"Phrae","ภูเก็ต":"Phuket","มหาสารคาม":"Maha Sarakham","มุกดาหาร":"Mukdahan","แม่ฮ่องสอน":"Mae Hong Son","ยโสธร":"Yasothon","ยะลา":"Yala","ร้อยเอ็ด":"Roi Et","ระนอง":"Ranong","ระยอง":"Rayong","ราชบุรี":"Ratchaburi","ลพบุรี":"Lop Buri","ลำปาง":"Lampang","ลำพูน":"Lamphun","เลย":"Loei","ศรีสะเกษ":"Si Sa Ket","สกลนคร":"Sakon Nakhon","สงขลา":"Songkhla","สตูล":"Satun","สมุทรปราการ":"Samut Prakan","สมุทรสงคราม":"Samut Songkhram","สมุทรสาคร":"Samut Sakhon","สระแก้ว":"Sa Kaeo","สระบุรี":"Saraburi","สิงห์บุรี":"Sing Buri","สุโขทัย":"Sukhothai","สุพรรณบุรี":"Suphan Buri","สุราษฎร์ธานี":"Surat Thani","สุรินทร์":"Surin","หนองคาย":"Nong Khai","หนองบัวลำภู":"Nong Bua Lam Phu","อ่างทอง":"Ang Thong","อำนาจเจริญ":"Amnat Charoen","อุดรธานี":"Udon Thani","อุตรดิตถ์":"Uttaradit","อุทัยธานี":"Uthai Thani","อุบลราชธานี":"Ubon Ratchathani"};
 
         async function init() {
-            log("📡 เชื่อมต่อฐานข้อมูล GitHub...");
             try {
                 const response = await fetch(CSV_URL + '?v=' + Date.now());
                 const csvText = await response.text();
                 
                 Papa.parse(csvText, {
-                    header: false,
-                    skipEmptyLines: true,
+                    header: false, skipEmptyLines: true,
                     complete: function(results) {
-                        log(`📂 พบข้อมูลทั้งหมด ${results.data.length - 1} รายการ`);
-                        const rows = results.data.slice(1);
-
-                        rawData = rows.map(row => {
-                            const clean = (val) => parseFloat(String(val || 0).replace(/,/g, '').replace(/%/g, '').trim()) || 0;
+                        rawData = results.data.slice(1).map(row => {
+                            const clean = val => parseFloat(String(val || 0).replace(/,/g, '').replace(/%/g, '').trim()) || 0;
                             return {
                                 province: row[0] ? String(row[0]).trim() : "-",
                                 office: row[1] ? String(row[1]).trim() : "-",
@@ -176,38 +136,34 @@
                         applyFilters();
                     }
                 });
-            } catch (e) { log("❌ ข้อผิดพลาด: " + e.message); }
+            } catch (e) { console.error(e); }
         }
 
         function setupFilters() {
-            const getUnique = (key) => [...new Set(rawData.map(d => d[key]))].sort();
-            
-            const populate = (id, list) => {
+            const getUnique = key => [...new Set(rawData.map(d => d[key]))].filter(v=>v!=="-").sort();
+            const pop = (id, list) => {
                 const el = document.getElementById(id);
-                el.innerHTML = `<option value="all">${el.options[0].text}</option>`;
-                list.forEach(v => { if(v && v !== "-") el.innerHTML += `<option value="${v}">${v}</option>`; });
+                el.innerHTML = `<option value="all">ทั้งหมด</option>` + list.map(v => `<option value="${v}">${v}</option>`).join('');
             };
-
-            populate('provinceFilter', getUnique('province'));
-            populate('officeFilter', getUnique('office'));
-            populate('groupFilter', getUnique('group'));
-            populate('typeFilter', getUnique('type'));
+            pop('provinceFilter', getUnique('province'));
+            pop('officeFilter', getUnique('office'));
+            pop('groupFilter', getUnique('group'));
+            pop('typeFilter', getUnique('type'));
         }
 
         function applyFilters() {
-            const province = document.getElementById('provinceFilter').value;
-            const office = document.getElementById('officeFilter').value;
-            const group = document.getElementById('groupFilter').value;
-            const type = document.getElementById('typeFilter').value;
+            const p = document.getElementById('provinceFilter').value;
+            const o = document.getElementById('officeFilter').value;
+            const g = document.getElementById('groupFilter').value;
+            const t = document.getElementById('typeFilter').value;
 
-            const filtered = rawData.filter(d => 
-                (province === 'all' || d.province === province) &&
-                (office === 'all' || d.office === office) &&
-                (group === 'all' || d.group == group) &&
-                (type === 'all' || d.type === type)
+            filteredData = rawData.filter(d => 
+                (p === 'all' || d.province === p) && (o === 'all' || d.office === o) &&
+                (g === 'all' || d.group == g) && (t === 'all' || d.type === t)
             );
-
-            updateDashboard(filtered);
+            
+            processAggregatedData();
+            updateDashboard();
         }
 
         function resetFilters() {
@@ -215,125 +171,185 @@
             applyFilters();
         }
 
-        function calculateMedian(arr) {
-            if (arr.length === 0) return 0;
-            const sorted = [...arr].sort((a, b) => a - b);
-            const mid = Math.floor(sorted.length / 2);
-            return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        const calcMedian = arr => {
+            if (!arr.length) return 0;
+            const s = [...arr].sort((a, b) => a - b);
+            const m = Math.floor(s.length / 2);
+            return s.length % 2 !== 0 ? s[m] : (s[m - 1] + s[m]) / 2;
+        };
+        const calcMean = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+        // จัดกลุ่มข้อมูลตาม กลุ่มที่ดิน + หน่วยที่ดิน เพื่อใช้ในกราฟ
+        function processAggregatedData() {
+            const groups = {};
+            filteredData.forEach(d => {
+                const key = `กลุ่ม ${d.group} | หน่วย ${d.landUnit}`;
+                if(!groups[key]) groups[key] = { trades: [], assessed: [], diffs: [], ratios: [] };
+                groups[key].trades.push(d.tradePrice);
+                groups[key].assessed.push(d.newAssessed);
+                groups[key].diffs.push(d.pctDiff);
+                groups[key].ratios.push(d.asRatio);
+            });
+
+            aggregatedData = Object.keys(groups).map(k => ({
+                label: k,
+                medTrade: calcMedian(groups[k].trades),
+                medAssessed: calcMedian(groups[k].assessed),
+                medDiff: calcMedian(groups[k].diffs),
+                medAS: calcMedian(groups[k].ratios)
+            })).sort((a,b) => a.label.localeCompare(b.label)); // เรียงตามชื่อกลุ่ม
         }
 
-        function updateDashboard(data) {
-            const mean = (arr) => arr.length > 0 ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
-            const fmt = (n, d=2) => n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
-            
-            const diffs = data.map(d => d.pctDiff);
-            const ratios = data.map(d => d.asRatio);
-            const trades = data.map(d => d.tradePrice);
-            const assessed = data.map(d => d.newAssessed);
+        function updateDashboard() {
+            const offices = new Set(filteredData.map(d=>d.office)).size;
+            const units = new Set(filteredData.map(d=>d.landUnit)).size;
+            const groups = new Set(filteredData.map(d=>d.group)).size;
+            const diffs = filteredData.map(d => d.pctDiff);
+            const ratios = filteredData.map(d => d.asRatio);
 
-            document.getElementById('dataBadge').textContent = `แสดง ${data.length} แปลง`;
-
-            // KPI CARDS
-            const kpiItems = [
-                { label: "เฉลี่ย % ส่วนต่าง", val: mean(diffs).toFixed(2) + "%", icon: "📊", color: "blue" },
-                { label: "มัธยฐาน % ส่วนต่าง", val: calculateMedian(diffs).toFixed(2) + "%", icon: "📍", color: "emerald" },
-                { label: "เฉลี่ย AS Ratio", val: mean(ratios).toFixed(4), icon: "⚖️", color: "indigo" },
-                { label: "มัธยฐาน AS Ratio", val: calculateMedian(ratios).toFixed(4), icon: "🎯", color: "purple" }
+            // 1. COUNT KPIs
+            const counts = [
+                { l: "จำนวนแปลงทั้งหมด", v: filteredData.length, c: "blue" },
+                { l: "สำนักงานที่ดิน", v: offices, c: "indigo" },
+                { l: "จำนวนหน่วยที่ดิน", v: units, c: "emerald" },
+                { l: "จำนวนกลุ่มที่ดิน", v: groups, c: "orange" }
             ];
-
-            document.getElementById('kpiGrid').innerHTML = kpiItems.map(k => `
-                <div class="card p-6 border-t-4 border-${k.color}-500">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">${k.label}</span>
-                        <span>${k.icon}</span>
-                    </div>
-                    <div class="text-2xl font-black text-slate-800 stat-value">${k.val}</div>
+            document.getElementById('countKpiGrid').innerHTML = counts.map(k => `
+                <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-${k.c}-500">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">${k.l}</p>
+                    <p class="text-2xl font-black text-slate-800">${k.v.toLocaleString()}</p>
                 </div>
             `).join('');
 
-            // DETAILED STATS (Image 2 style)
+            // 2. STAT KPIs (Mean / Median)
             const stats = [
-                { label: "ค่า % ต่างสูงสุด (Max)", val: Math.max(...diffs, 0).toFixed(2) + "%", sub: "ส่วนต่างที่สูงที่สุด" },
-                { label: "ค่า % ต่างต่ำสุด (Min)", val: Math.min(...diffs, 0).toFixed(2) + "%", sub: "ส่วนต่างที่ต่ำที่สุด" },
-                { label: "ราคาซื้อขายเฉลี่ย", val: fmt(mean(trades), 0), sub: "บาท / รายการ" },
-                { label: "ราคาประเมินใหม่เฉลี่ย", val: fmt(mean(assessed), 0), sub: "บาท / รายการ" },
-                { label: "ความถูกต้องของข้อมูล", val: (100 - mean(diffs)).toFixed(2) + "%", sub: "ความใกล้เคียงราคาตลาด" }
+                { l: "เฉลี่ย % ต่าง (Mean)", v: calcMean(diffs).toFixed(2)+"%", c: "text-blue-600" },
+                { l: "มัธยฐาน % ต่าง (Median)", v: calcMedian(diffs).toFixed(2)+"%", c: "text-blue-800" },
+                { l: "เฉลี่ย AS Ratio (Mean)", v: calcMean(ratios).toFixed(4), c: "text-purple-600" },
+                { l: "มัธยฐาน AS Ratio (Median)", v: calcMedian(ratios).toFixed(4), c: "text-purple-800" }
             ];
-
-            document.getElementById('detailedStats').innerHTML = stats.map(s => `
-                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
-                    <div>
-                        <p class="text-xs font-bold text-blue-400 uppercase">${s.label}</p>
-                        <p class="text-[10px] text-slate-500">${s.sub}</p>
-                    </div>
-                    <div class="text-lg font-bold">${s.val}</div>
+            document.getElementById('statKpiGrid').innerHTML = stats.map(k => `
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">${k.l}</p>
+                    <p class="text-xl font-bold ${k.c}">${k.v}</p>
                 </div>
             `).join('');
 
-            updateCharts(data);
-            updateTable(data);
+            document.getElementById('recordCount').textContent = `ทั้งหมด ${filteredData.length} รายการ`;
+
+            updateMap();
+            updateCharts();
+            updateTable();
         }
 
-        function updateCharts(data) {
+        async function updateMap() {
+            if(!mapInstance) mapInstance = echarts.init(document.getElementById('mapChart'));
+            
+            // จับกลุ่มหา Median รายจังหวัด
+            const provGroups = {};
+            filteredData.forEach(d => {
+                let pName = d.province.replace('จ.', '').replace('จังหวัด', '').trim();
+                const engName = thaiToEngProv[pName] || pName;
+                if(!provGroups[engName]) provGroups[engName] = [];
+                provGroups[engName].push(d.pctDiff);
+            });
+
+            const mapData = Object.keys(provGroups).map(k => ({
+                name: k, value: calcMedian(provGroups[k])
+            }));
+
+            // โหลด GeoJSON ประเทศไทย (ครั้งเดียว)
+            if(!window.thGeoJson) {
+                const res = await fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json');
+                window.thGeoJson = await res.json();
+                echarts.registerMap('TH', window.thGeoJson);
+            }
+
+            const maxVal = Math.max(...mapData.map(d=>d.value), 30); // อย่างน้อยสุดให้สเกลสุดที่ 30
+
+            mapInstance.setOption({
+                tooltip: { 
+                    trigger: 'item', 
+                    formatter: function(params) {
+                        return params.value ? `${params.name}<br/><b>มัธยฐาน % ต่าง: ${params.value.toFixed(2)}%</b>` : `${params.name}<br/>ไม่มีข้อมูล`;
+                    }
+                },
+                visualMap: {
+                    left: 'right', top: 'bottom', min: 0, max: maxVal,
+                    text: ['ความต่างสูง', 'ความต่างต่ำ'], calculable: true,
+                    inRange: { color: ['#34d399', '#fde047', '#f87171'] } // เขียว -> เหลือง -> แดง
+                },
+                series: [{
+                    name: 'Thailand', type: 'map', map: 'TH',
+                    roam: true, // เลื่อน/ซูมแผนที่ได้
+                    itemStyle: { borderColor: '#fff', borderWidth: 0.5 },
+                    emphasis: { itemStyle: { areaColor: '#3b82f6' }, label: { show: true, color: '#fff' } },
+                    data: mapData
+                }]
+            });
+        }
+
+        function updateCharts() {
             const ctx1 = document.getElementById('priceChart').getContext('2d');
             const ctx2 = document.getElementById('diffChart').getContext('2d');
             if (charts.price) charts.price.destroy();
             if (charts.diff) charts.diff.destroy();
 
+            // Plugin สำหรับ Custom Tooltip แสดง % ต่าง และ AS Ratio
+            const customTooltip = {
+                callbacks: {
+                    afterBody: function(context) {
+                        const idx = context[0].dataIndex;
+                        const d = aggregatedData[idx];
+                        return `\n📊 มัธยฐาน % ต่าง: ${d.medDiff.toFixed(2)}%\n⚖️ มัธยฐาน AS Ratio: ${d.medAS.toFixed(4)}`;
+                    }
+                }
+            };
+
             charts.price = new Chart(ctx1, {
                 type: 'line',
                 data: {
-                    labels: data.map(d => "หน่วย " + d.landUnit),
+                    labels: aggregatedData.map(d => d.label),
                     datasets: [
-                        { label: 'ราคาประเมินใหม่', data: data.map(d => d.newAssessed), borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.1)', fill: true, tension: 0.4, pointRadius: 2 },
-                        { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#ef4444', borderDash: [5, 5], tension: 0.1, pointRadius: 2 }
+                        { label: 'มัธยฐาน ราคาประเมินใหม่', data: aggregatedData.map(d => d.medAssessed), borderColor: '#4f46e5', backgroundColor: '#4f46e520', fill: true, tension: 0.3, pointRadius: 3 },
+                        { label: 'มัธยฐาน ราคาซื้อขาย', data: aggregatedData.map(d => d.medTrade), borderColor: '#f59e0b', tension: 0.3, pointRadius: 3 }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: customTooltip } }
             });
 
             charts.diff = new Chart(ctx2, {
                 type: 'bar',
                 data: {
-                    labels: data.map(d => "หน่วย " + d.landUnit),
+                    labels: aggregatedData.map(d => d.label),
                     datasets: [{
-                        label: '% ความต่าง',
-                        data: data.map(d => d.pctDiff),
-                        backgroundColor: data.map(d => d.pctDiff > 30 ? '#ef4444' : '#10b981'),
-                        borderRadius: 6
+                        label: 'มัธยฐาน % ความแตกต่าง',
+                        data: aggregatedData.map(d => d.medDiff),
+                        backgroundColor: aggregatedData.map(d => d.medDiff > 30 ? '#ef4444' : '#10b981'),
+                        borderRadius: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: customTooltip } }
             });
         }
 
-        function updateTable(data) {
+        function updateTable() {
             const tbody = document.getElementById('dataTableBody');
-            tbody.innerHTML = data.map(d => `
+            tbody.innerHTML = filteredData.map(d => `
                 <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="px-8 py-4 font-bold text-blue-600">${d.province}</td>
-                    <td class="px-8 py-4">${d.office}</td>
-                    <td class="px-8 py-4">${d.group}</td>
-                    <td class="px-8 py-4 font-mono text-xs">U-${d.landUnit}</td>
-                    <td class="px-8 py-4 text-right font-bold text-slate-700">${d.tradePrice.toLocaleString()}</td>
-                    <td class="px-8 py-4 text-right font-bold text-blue-700">${d.newAssessed.toLocaleString()}</td>
-                    <td class="px-8 py-4 text-right font-black ${d.pctDiff > 30 ? 'text-red-500' : 'text-emerald-500'}">${d.pctDiff.toFixed(2)}%</td>
+                    <td class="px-6 py-3 font-bold text-slate-700">${d.province}</td>
+                    <td class="px-6 py-3">${d.office}</td>
+                    <td class="px-6 py-3 font-medium text-indigo-600">${d.group}</td>
+                    <td class="px-6 py-3">U-${d.landUnit}</td>
+                    <td class="px-6 py-3 text-xs">${d.type}</td>
+                    <td class="px-6 py-3 text-right font-mono text-slate-600">${d.tradePrice.toLocaleString()}</td>
+                    <td class="px-6 py-3 text-right font-mono text-blue-600">${d.newAssessed.toLocaleString()}</td>
+                    <td class="px-6 py-3 text-right font-bold ${d.pctDiff > 30 ? 'text-red-500' : 'text-emerald-500'}">${d.pctDiff.toFixed(2)}%</td>
                 </tr>`).join('');
         }
 
-        function exportCSV() {
-            let csv = "\ufeffจังหวัด,สำนักงาน,กลุ่ม,หน่วย,ราคาซื้อขาย,ประเมินใหม่,%ต่าง\n";
-            rawData.forEach(d => {
-                csv += `${d.province},${d.office},${d.group},${d.landUnit},${d.tradePrice},${d.newAssessed},${d.pctDiff}\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", "land_valuation_report.csv");
-            link.click();
-        }
-
         window.onload = init;
+        window.onresize = () => { if(mapInstance) mapInstance.resize(); };
     </script>
 </body>
 </html>
