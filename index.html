@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard ความแตกต่างราคาตลาด | สำนักงานที่ดิน</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                navy: { DEFAULT: '#0A1F44', dark: '#061533', light: '#1B3668' },
+                gold: { DEFAULT: '#D4AF37', light: '#F4D77A', dark: '#A8862A' }
+            },
+            fontFamily: {
+                sans: ['Sarabun', 'Segoe UI', 'Tahoma', 'sans-serif']
+            }
+        }
+    }
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    body { font-family: 'Sarabun', 'Segoe UI', 'Tahoma', sans-serif; }
+    .chart-container { position: relative; }
+    .scrollbar-thin::-webkit-scrollbar { height: 8px; width: 8px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 4px; }
+    .num { font-variant-numeric: tabular-nums; }
+    .heading-accent::before {
+        content: '';
+        display: inline-block;
+        width: 4px; height: 20px;
+        background: #D4AF37; border-radius: 2px;
+        margin-right: 10px; vertical-align: middle;
+    }
+    .toast-enter { transform: translateX(120%); }
+    .toast-show { transform: translateX(0); }
+    .transition-toast { transition: transform 0.3s ease; }
+</style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen">
+
+<header class="bg-gradient-to-br from-navy to-navy-light text-white border-b-4 border-gold shadow-lg">
+    <div class="max-w-[1700px] mx-auto px-6 md:px-10 py-5 flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <h1 class="text-xl md:text-2xl font-bold tracking-tight">
+                Dashboard ความแตกต่างราคาตลาด <span class="text-gold">·</span> ข้อมูลสำนักงานที่ดิน
+            </h1>
+            <p class="text-xs md:text-sm opacity-80 mt-1">วิเคราะห์ข้อมูลสดจาก GitHub (data.csv)</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <button onclick="fetchDataFromGitHub()" class="px-4 py-2 rounded-md border-2 border-gold text-white font-semibold text-sm hover:bg-gold hover:text-navy transition">↻ รีเฟรชข้อมูล</button>
+            <button onclick="exportCSV()" class="px-4 py-2 rounded-md border-2 border-slate-400 text-white font-semibold text-sm hover:bg-white hover:text-navy transition">⤓ Export CSV</button>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-[1700px] mx-auto px-6 md:px-10 py-7">
+
+    <section class="bg-white rounded-xl shadow-sm p-5 md:p-6 mb-6">
+        <h3 class="heading-accent text-navy font-bold text-base mb-4">ตัวกรองข้อมูล (Filters)</h3>
+        <div class="flex flex-wrap items-end gap-4">
+            <div class="flex flex-col gap-1.5 min-w-[160px]">
+                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">กลุ่มที่ดิน</label>
+                <select id="fGroup" onchange="applyFilters()" class="px-3 py-2 rounded-md border-2 border-slate-200 focus:border-gold focus:outline-none text-navy font-medium cursor-pointer">
+                    <option value="">ทั้งหมด</option>
+                </select>
+            </div>
+            <div class="flex flex-col gap-1.5 min-w-[160px]">
+                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ประเภท</label>
+                <select id="fType" onchange="applyFilters()" class="px-3 py-2 rounded-md border-2 border-slate-200 focus:border-gold focus:outline-none text-navy font-medium cursor-pointer">
+                    <option value="">ทั้งหมด</option>
+                </select>
+            </div>
+            <button onclick="clearFilters()" class="px-4 py-2 rounded-md bg-slate-100 hover:bg-slate-200 text-navy font-semibold text-sm border border-slate-200 transition">✕ ล้างตัวกรอง</button>
+        </div>
+    </section>
+
+    <div id="kpiGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <h3 class="heading-accent text-navy font-bold text-base mb-4">เปรียบเทียบราคา 3 ระดับ</h3>
+            <div class="chart-container h-[350px]"><canvas id="lineChart"></canvas></div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <h3 class="heading-accent text-navy font-bold text-base mb-4">% ความแตกต่างจากราคาตลาด</h3>
+            <div class="chart-container h-[350px]"><canvas id="barChart"></canvas></div>
+        </div>
+    </div>
+
+    <section class="bg-white rounded-xl shadow-sm p-5 mb-6">
+        <h3 class="heading-accent text-navy font-bold text-base">รายละเอียดข้อมูล (Data Table)</h3>
+        <div class="overflow-x-auto max-h-[450px] mt-4 rounded-lg border border-slate-200 scrollbar-thin">
+            <table class="w-full text-sm">
+                <thead class="sticky top-0 z-10 bg-navy text-white">
+                    <tr>
+                        <th class="px-3 py-2.5 text-left text-xs whitespace-nowrap">#</th>
+                        <th class="px-3 py-2.5 text-left text-xs whitespace-nowrap">จังหวัด/สำนักงาน</th>
+                        <th class="px-3 py-2.5 text-left text-xs whitespace-nowrap">กลุ่ม</th>
+                        <th class="px-3 py-2.5 text-left text-xs whitespace-nowrap">ประเภท</th>
+                        <th class="px-3 py-2.5 text-right text-xs whitespace-nowrap">ราคาซื้อขาย</th>
+                        <th class="px-3 py-2.5 text-right text-xs whitespace-nowrap">ราคาตลาด</th>
+                        <th class="px-3 py-2.5 text-right text-xs whitespace-nowrap">ราคาประเมิน</th>
+                        <th class="px-3 py-2.5 text-right text-xs whitespace-nowrap">% แตกต่าง</th>
+                    </tr>
+                </thead>
+                <tbody id="tBody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <footer class="text-center text-xs text-slate-500 py-5">
+        © 2026 Executive Dashboard · ระบบตรวจสอบความใกล้เคียงราคาตลาด
+    </footer>
+</main>
+
+<div id="toast" class="toast-enter transition-toast fixed top-5 right-5 bg-navy text-white px-5 py-3 rounded-lg border-l-4 border-gold shadow-2xl z-[60] font-semibold text-sm"></div>
+
+<script>
+const GITHUB_CSV_URL = 'https://raw.githubusercontent.com/akekalak12-glitch/akekalakch/refs/heads/main/data.csv';
+let allData = [];
+const charts = {};
+
+async function fetchDataFromGitHub() {
+    toast("กำลังดึงข้อมูลล่าสุดจาก GitHub...");
+    try {
+        const response = await fetch(GITHUB_CSV_URL);
+        if (!response.ok) throw new Error('ไม่สามารถโหลดไฟล์ CSV ได้');
+        const csvString = await response.text();
+        
+        Papa.parse(csvString, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                // แก้ไขการ Mapping ให้ตรงกับไฟล์ data.csv ของคุณเป๊ะๆ
+                allData = results.data.map(r => {
+                    const trade = parseFloat(String(r["ราคาซื้อขายในช่วง 0.6 - 0.9"] || 0).replace(/,/g, ''));
+                    const market = parseFloat(String(r["ราคาของหน่วย"] || 0).replace(/,/g, ''));
+                    const assessed = parseFloat(String(r["ราคาประเมินใหม่ของแปลงเซลที่เลือก"] || 0).replace(/,/g, ''));
+                    const pDiff = parseFloat(String(r["เปอร์เซนต์ความแตกต่างจากราคาตลาด"] || 0).replace(/[%]/g, ''));
+                    
+                    return {
+                        province: r["จังหวัด"] || "",
+                        office: r["สำนักงานที่ดิน"] || "",
+                        group: r["รหัสกลุ่มที่ดิน"] || "",
+                        tradePrice: trade,
+                        marketPrice: market,
+                        newAssessed: assessed,
+                        type: r["ประเภท"] || "",
+                        unit: r["หน่วยที่ดินที่"] || "",
+                        asRatio: parseFloat(r["AS_Ratio_New"] || 0),
+                        pctDiff: pDiff
+                    };
+                }).filter(d => !isNaN(d.tradePrice) && d.tradePrice > 0);
+
+                setupFilters();
+                render(allData);
+                toast(`โหลดข้อมูลสำเร็จ ${allData.length} รายการ`);
+            }
+        });
+    } catch (error) {
+        toast("Error: " + error.message);
+    }
+}
+
+const median = arr => {
+    if (!arr.length) return 0;
+    const s = [...arr].sort((a,b) => a-b);
+    const n = s.length;
+    return n % 2 === 0 ? (s[n/2-1] + s[n/2]) / 2 : s[Math.floor(n/2)];
+};
+const mean = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
+const fmt = (n, d=2) => (n || 0).toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtInt = n => (n || 0).toLocaleString('th-TH');
+
+function setupFilters() {
+    const groups = [...new Set(allData.map(d => d.group))].sort((a,b) => a-b);
+    const types = [...new Set(allData.map(d => d.type))];
+    document.getElementById('fGroup').innerHTML = '<option value="">ทั้งหมด</option>' + groups.map(g => `<option value="${g}">กลุ่ม ${g}</option>`).join('');
+    document.getElementById('fType').innerHTML = '<option value="">ทั้งหมด</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+function applyFilters() {
+    const g = document.getElementById('fGroup').value;
+    const t = document.getElementById('fType').value;
+    const filtered = allData.filter(d => {
+        if (g && d.group != g) return false;
+        if (t && d.type !== t) return false;
+        return true;
+    });
+    render(filtered);
+}
+
+function clearFilters() {
+    document.getElementById('fGroup').value = '';
+    document.getElementById('fType').value = '';
+    applyFilters();
+}
+
+function renderKPI(data) {
+    const pArr = data.map(d => d.pctDiff);
+    const rArr = data.map(d => d.asRatio);
+    document.getElementById('kpiGrid').innerHTML = `
+        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-navy">
+            <div class="text-xs font-semibold text-slate-500 uppercase">จำนวนแปลง</div>
+            <div class="text-2xl font-bold text-navy mt-1">${fmtInt(data.length)}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gold">
+            <div class="text-xs font-semibold text-slate-500 uppercase">มัธยฐาน % ต่าง</div>
+            <div class="text-2xl font-bold text-gold-dark mt-1">${fmt(median(pArr))}%</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-navy">
+            <div class="text-xs font-semibold text-slate-500 uppercase">ค่าเฉลี่ย % ต่าง</div>
+            <div class="text-2xl font-bold text-navy mt-1">${fmt(mean(pArr))}%</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gold">
+            <div class="text-xs font-semibold text-slate-500 uppercase">มัธยฐาน AS_Ratio</div>
+            <div class="text-2xl font-bold text-gold-dark mt-1">${fmt(median(rArr), 4)}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-navy">
+            <div class="text-xs font-semibold text-slate-500 uppercase">ค่าเฉลี่ย AS_Ratio</div>
+            <div class="text-2xl font-bold text-navy mt-1">${fmt(mean(rArr), 4)}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gold">
+            <div class="text-xs font-semibold text-slate-500 uppercase">ช่วงค่า (Min-Max)</div>
+            <div class="text-sm font-bold text-gold-dark mt-1">${fmt(Math.min(...pArr))}% - ${fmt(Math.max(...pArr))}%</div>
+        </div>
+    `;
+}
+
+function renderCharts(data) {
+    const ctxL = document.getElementById('lineChart').getContext('2d');
+    if (charts.line) charts.line.destroy();
+    charts.line = new Chart(ctxL, {
+        type: 'line',
+        data: {
+            labels: data.map((_, i) => i + 1),
+            datasets: [
+                { label: 'ราคาซื้อขาย', data: data.map(d => d.tradePrice), borderColor: '#0A1F44', tension: 0.3, pointRadius: 2 },
+                { label: 'ราคาตลาด', data: data.map(d => d.marketPrice), borderColor: '#D4AF37', tension: 0.1, pointRadius: 2 },
+                { label: 'ราคาประเมินใหม่', data: data.map(d => d.newAssessed), borderColor: '#A8862A', borderDash: [5,5], tension: 0.3, pointRadius: 2 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+    });
+
+    const ctxB = document.getElementById('barChart').getContext('2d');
+    if (charts.bar) charts.bar.destroy();
+    charts.bar = new Chart(ctxB, {
+        type: 'bar',
+        data: {
+            labels: data.map((_, i) => i + 1),
+            datasets: [{
+                label: '% ความแตกต่าง',
+                data: data.map(d => d.pctDiff),
+                backgroundColor: data.map(d => d.pctDiff > 30 ? '#EF4444' : d.pctDiff > 15 ? '#D4AF37' : '#10B981')
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function renderTable(data) {
+    document.getElementById('tBody').innerHTML = data.map((d, i) => `
+        <tr class="hover:bg-amber-50 border-b border-slate-200">
+            <td class="px-3 py-2 text-xs">${i+1}</td>
+            <td class="px-3 py-2 text-xs">${d.province} - ${d.office}</td>
+            <td class="px-3 py-2 text-xs">${d.group}</td>
+            <td class="px-3 py-2 text-xs">${d.type}</td>
+            <td class="px-3 py-2 text-xs text-right num">${fmtInt(d.tradePrice)}</td>
+            <td class="px-3 py-2 text-xs text-right num">${fmtInt(d.marketPrice)}</td>
+            <td class="px-3 py-2 text-xs text-right num">${fmtInt(d.newAssessed)}</td>
+            <td class="px-3 py-2 text-xs text-right font-bold ${d.pctDiff > 30 ? 'text-red-600' : 'text-emerald-600'}">${fmt(d.pctDiff)}%</td>
+        </tr>
+    `).join('');
+}
+
+function render(data) {
+    if (!data.length) return;
+    renderKPI(data);
+    renderCharts(data);
+    renderTable(data);
+}
+
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.remove('toast-enter');
+    t.classList.add('toast-show');
+    setTimeout(() => {
+        t.classList.remove('toast-show');
+        t.classList.add('toast-enter');
+    }, 3000);
+}
+
+function exportCSV() {
+    let csv = 'สำนักงาน,กลุ่ม,ประเภท,ราคาซื้อขาย,ราคาตลาด,ราคาประเมิน,%แตกต่าง\n';
+    allData.forEach(d => {
+        csv += `${d.office},${d.group},${d.type},${d.tradePrice},${d.marketPrice},${d.newAssessed},${d.pctDiff}\n`;
+    });
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'export_data.csv'; a.click();
+}
+
+window.addEventListener('DOMContentLoaded', fetchDataFromGitHub);
+</script>
+</body>
+</html>
