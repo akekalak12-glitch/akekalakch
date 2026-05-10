@@ -18,7 +18,8 @@
                         darkcard: '#0A162C',
                         gold: { DEFAULT: '#D4AF37', neon: '#FFD700', dark: '#997A00' },
                         orange: { neon: '#FF8C00', bright: '#F97316' },
-                        cyan: { neon: '#00E5FF' }
+                        cyan: { neon: '#00E5FF' },
+                        pink: { neon: '#FF007A' }
                     }
                 }
             }
@@ -73,7 +74,7 @@
                     <p class="text-slate-400 font-medium mt-1">วิเคราะห์เปรียบเทียบราคาประเมินใหม่ และราคาซื้อขายจริง</p>
                 </div>
                 <div class="text-right hidden md:block">
-                    <p class="text-[10px] text-gold font-bold uppercase tracking-widest">Dashboard System v5.2</p>
+                    <p class="text-[10px] text-gold font-bold uppercase tracking-widest">Dashboard System v5.3</p>
                     <p id="currentTime" class="text-xs text-slate-500 font-mono"></p>
                 </div>
             </header>
@@ -102,15 +103,17 @@
                 <div class="flex flex-col gap-8 lg:col-span-1">
                     <div class="card p-5 border-t-4 border-cyan-neon flex-1">
                         <h4 class="font-bold text-base mb-1 text-cyan-neon uppercase">🏆 Top 10 ใกล้เคียงตลาดที่สุด</h4>
-                        <div class="chart-container" style="height: 240px;"><canvas id="top10Chart"></canvas></div>
+                        <p class="text-[10px] text-slate-400 mb-2">ดัชนีความแม่นยำ (100 - %ส่วนต่าง)</p>
+                        <div class="chart-container" style="height: 230px;"><canvas id="top10Chart"></canvas></div>
                     </div>
-                    <div class="card p-5 border-t-4 border-orange-bright flex-1">
-                        <h4 class="font-bold text-base mb-1 text-orange-bright uppercase">⚠️ Bottom 10 ห่างจากตลาดที่สุด</h4>
-                        <div class="chart-container" style="height: 240px;"><canvas id="bottom10Chart"></canvas></div>
+                    <div class="card p-5 border-t-4 border-pink-neon flex-1">
+                        <h4 class="font-bold text-base mb-1 text-pink-neon uppercase">⚠️ Bottom 10 ห่างจากตลาดที่สุด</h4>
+                        <p class="text-[10px] text-slate-400 mb-2">ดัชนีความแม่นยำ (100 - %ส่วนต่าง)</p>
+                        <div class="chart-container" style="height: 230px;"><canvas id="bottom10Chart"></canvas></div>
                     </div>
                 </div>
-                <div class="card p-6 lg:col-span-2 relative flex flex-col">
-                    <h4 class="font-bold text-lg text-white border-l-4 border-gold-neon pl-3 mb-2 uppercase">แผนที่แสดงเปอร์เซ็นต์ส่วนต่างรายจังหวัด</h4>
+                <div class="card p-6 lg:col-span-2 relative flex flex-col border-t-4 border-gold">
+                    <h4 class="font-bold text-lg text-white border-l-4 border-gold-neon pl-3 mb-2 uppercase">แผนที่ระดับความแม่นยำรายจังหวัด (Median Accuracy %)</h4>
                     <div id="mapChart" class="map-container flex-1"></div>
                 </div>
             </div>
@@ -163,6 +166,9 @@
         const calcMean = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
         const fmt = n => n.toLocaleString('th-TH');
         const fmtDec = n => n.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // ฟังก์ชันคำนวณความแม่นยำ (100 - %ต่าง)
+        const calcAcc = diff => Math.max(0, 100 - Math.abs(diff));
 
         Chart.defaults.color = '#94a3b8';
 
@@ -261,7 +267,7 @@
                 { l: "Mean AS Ratio", v: calcMean(ratios).toFixed(4), c: "text-cyan-neon" },
                 { l: "Med AS Ratio", v: calcMedian(ratios).toFixed(4), c: "text-white" }
             ].map(k => `<div class="bg-gradient-to-br from-[#0A162C] to-[#040B16] p-3 rounded-lg border border-gold/20"><p class="text-[10px] text-slate-400 uppercase font-bold">${k.l}</p><p class="text-lg font-black ${k.c}">${k.v}</p></div>`).join('');
-            document.getElementById('recordCount').textContent = `Total Records: ${fmt(filteredData.length)}`;
+            document.getElementById('recordCount').textContent = `Total: ${fmt(filteredData.length)}`;
         }
 
         function updateGauges() {
@@ -287,19 +293,27 @@
         function updateTopBottomCharts() {
             const provGroups = {};
             rawData.forEach(d => { if(!provGroups[d.province]) provGroups[d.province] = []; provGroups[d.province].push(d.pctDiff); });
-            let rankings = Object.keys(provGroups).map(k => ({ prov: k, val: Math.abs(calcMedian(provGroups[k])) })).filter(r => r.prov !== "-");
-            let top10 = [...rankings].sort((a,b) => a.val - b.val).slice(0, 10);
-            let bottom10 = [...rankings].sort((a,b) => b.val - a.val).slice(0, 10);
+            
+            // คำนวณ Accuracy ระดับจังหวัด: 100 - Median %Diff
+            let rankings = Object.keys(provGroups).map(k => ({ prov: k, acc: calcAcc(calcMedian(provGroups[k])) })).filter(r => r.prov !== "-");
+            
+            let top10 = [...rankings].sort((a,b) => b.acc - a.acc).slice(0, 10);
+            let bottom10 = [...rankings].sort((a,b) => a.acc - b.acc).slice(0, 10);
+            
             const renderBar = (ctxId, data, color, chartKey) => {
                 if(charts[chartKey]) charts[chartKey].destroy();
                 charts[chartKey] = new Chart(document.getElementById(ctxId).getContext('2d'), {
                     type: 'bar',
-                    data: { labels: data.map(d=>d.prov), datasets: [{ data: data.map(d=>d.val), backgroundColor: color, borderRadius: 4 }] },
-                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false} }, scales: { x: { grid: { color: '#1e293b' } } } }
+                    data: { labels: data.map(d=>d.prov), datasets: [{ data: data.map(d=>d.acc), backgroundColor: color, borderRadius: 4 }] },
+                    options: { 
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
+                        plugins: { legend: {display: false}, tooltip: {callbacks: {label: c=>` ความแม่นยำ: ${c.raw.toFixed(2)}%`}} }, 
+                        scales: { x: { grid: { color: '#1e293b' }, max: 100 } } 
+                    }
                 });
             };
             renderBar('top10Chart', top10, '#00E5FF', 'top10');
-            renderBar('bottom10Chart', bottom10, '#F97316', 'bot10');
+            renderBar('bottom10Chart', bottom10, '#FF007A', 'bot10');
         }
 
         function setDrillLevel(level, prov, off) {
@@ -325,7 +339,8 @@
 
         function updateDrillCharts() {
             if (charts.dPrice) charts.dPrice.destroy();
-            charts.dPrice = new Chart(document.getElementById('drillPriceChart').getContext('2d'), {
+            const ctx = document.getElementById('drillPriceChart').getContext('2d');
+            charts.dPrice = new Chart(ctx, {
                 type: 'bar',
                 data: { labels: drillData.map(d=>d.label), datasets: [
                     { label: 'มัธยฐาน ราคาประเมินใหม่', data: drillData.map(d=>d.assessed), backgroundColor: '#D4AF37' },
@@ -344,12 +359,15 @@
             if(!mapInstance) mapInstance = echarts.init(document.getElementById('mapChart'));
             const provGroups = {};
             filteredData.forEach(d => { const eng = thaiToEngProv[d.province] || d.province; if(!provGroups[eng]) provGroups[eng] = []; provGroups[eng].push(d.pctDiff); });
-            const mapData = Object.keys(provGroups).map(k => ({ name: k, value: Math.abs(calcMedian(provGroups[k])) }));
+            
+            // แผนที่แสดงความแม่นยำ (100 - %Diff)
+            const mapData = Object.keys(provGroups).map(k => ({ name: k, value: calcAcc(calcMedian(provGroups[k])) }));
+            
             if(!window.thGeoJson) { const res = await fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json'); window.thGeoJson = await res.json(); echarts.registerMap('TH', window.thGeoJson); }
             mapInstance.setOption({
                 backgroundColor: 'transparent',
-                tooltip: { formatter: p => p.value ? `<span style="color:black">${p.name}<br/><b>ส่วนต่าง: ${p.value.toFixed(2)}%</b></span>` : `<span style="color:black">${p.name}<br/>ไม่มีข้อมูล</span>` },
-                visualMap: { left: 'right', top: 'bottom', min: 0, max: 50, text: ['ห่างมาก', 'ใกล้มาก'], textStyle: { color: '#e2e8f0' }, calculable: true, inRange: { color: ['#00E5FF', '#FFD700', '#F97316'] } },
+                tooltip: { formatter: p => p.value ? `<span style="color:black">${p.name}<br/><b>ความแม่นยำ: ${p.value.toFixed(2)}%</b></span>` : `<span style="color:black">${p.name}<br/>ไม่มีข้อมูล</span>` },
+                visualMap: { left: 'right', top: 'bottom', min: 0, max: 100, text: ['แม่นยำสูง', 'แม่นยำต่ำ'], textStyle: { color: '#e2e8f0' }, calculable: true, inRange: { color: ['#FF007A', '#FFD700', '#00E5FF'] } },
                 series: [{ name: 'TH', type: 'map', map: 'TH', roam: true, itemStyle: { areaColor: '#0A162C', borderColor: '#D4AF37', borderWidth: 0.5 }, emphasis: { itemStyle: { areaColor: '#D4AF37' }, label: { color: '#040B16', fontWeight: 'bold' } }, data: mapData }]
             });
         }
