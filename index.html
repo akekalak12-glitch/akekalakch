@@ -166,8 +166,6 @@
         const calcMean = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
         const fmt = n => n.toLocaleString('th-TH');
         const fmtDec = n => n.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        
-        // ฟังก์ชันคำนวณความแม่นยำ / ใกล้เคียง (Accuracy)
         const calcAcc = diff => Math.max(0, 100 - Math.abs(diff));
 
         async function init() {
@@ -234,19 +232,20 @@
 
         function updateKPIs() {
             const diffs = filteredData.map(d => d.pctDiff);
-            const accMean = calcAcc(calcMean(diffs));
-            const accMed = calcAcc(calcMedian(diffs));
+            const ratios = filteredData.map(d => d.asRatio);
             document.getElementById('countKpiGrid').innerHTML = [
                 { l: "จำนวนแปลง", v: filteredData.length, icon: "📝" },
                 { l: "สำนักงาน", v: new Set(filteredData.map(d=>d.office)).size, icon: "🏢" },
                 { l: "หน่วยที่ดิน", v: new Set(filteredData.map(d=>d.landUnit)).size, icon: "📌" },
                 { l: "กลุ่มที่ดิน", v: new Set(filteredData.map(d=>d.group)).size, icon: "📂" }
             ].map(k => `<div class="bg-[#050D1A] p-3 rounded-lg border border-slate-800 flex justify-between items-center"><div class="text-2xl">${k.icon}</div><div class="text-right"><p class="text-[10px] text-slate-400 uppercase font-bold">${k.l}</p><p class="text-xl font-black text-white">${fmt(k.v)}</p></div></div>`).join('');
+            
+            // แก้เฉพาะ 2 card นี้ให้กลับเป็น "เฉลี่ย % ต่าง" และ "มัธยฐาน % ต่าง" ตามที่ผู้ใช้ต้องการ
             document.getElementById('statKpiGrid').innerHTML = [
-                { l: "ความใกล้เคียง Mean", v: accMean.toFixed(2)+"%", c: "text-cyan-neon" },
-                { l: "ความใกล้เคียง Med", v: accMed.toFixed(2)+"%", c: "text-gold-neon" },
-                { l: "Mean AS Ratio", v: calcMean(filteredData.map(d=>d.asRatio)).toFixed(4), c: "text-white" },
-                { l: "Med AS Ratio", v: calcMedian(filteredData.map(d=>d.asRatio)).toFixed(4), c: "text-slate-400" }
+                { l: "เฉลี่ย % ต่าง (Mean)", v: calcMean(diffs).toFixed(2)+"%", c: "text-orange-bright" },
+                { l: "มัธยฐาน % ต่าง (Med)", v: calcMedian(diffs).toFixed(2)+"%", c: "text-gold-neon" },
+                { l: "Mean AS Ratio", v: calcMean(ratios).toFixed(4), c: "text-white" },
+                { l: "Med AS Ratio", v: calcMedian(ratios).toFixed(4), c: "text-slate-400" }
             ].map(k => `<div class="bg-gradient-to-br from-[#0A162C] to-[#040B16] p-3 rounded-lg border border-gold/20"><p class="text-[10px] text-slate-400 uppercase font-bold">${k.l}</p><p class="text-lg font-black ${k.c}">${k.v}</p></div>`).join('');
             document.getElementById('recordCount').textContent = `Count: ${fmt(filteredData.length)}`;
         }
@@ -281,11 +280,11 @@
             let groups = {}, bc = `<button onclick="setDrillLevel('province', null, null)" class="hover:text-gold-neon transition">🌐 ประเทศ</button>`;
             if (drillLevel === 'province') filteredData.forEach(d => { if(!groups[d.province]) groups[d.province] = { t: [], a: [] }; groups[d.province].t.push(d.tradePrice); groups[d.province].a.push(d.newAssessed); });
             else if (drillLevel === 'office') { bc += ` / <button onclick="setDrillLevel('office', '${selectedProv}', null)" class="hover:text-gold-neon transition">${selectedProv}</button>`; filteredData.filter(d=>d.province===selectedProv).forEach(d => { if(!groups[d.office]) groups[d.office] = { t: [], a: [] }; groups[d.office].t.push(d.tradePrice); groups[d.office].a.push(d.newAssessed); }); }
-            else if (drillLevel === 'unit') { bc += ` / <button onclick="setDrillLevel('office', '${selectedProv}', null)" class="hover:text-gold-neon transition">${selectedProv}</button> / <span class="text-orange-bright font-bold">${selectedOffice}</span>`; filteredData.filter(d=>d.province===selectedProv && d.office===selectedOffice).forEach(d => { const k = `G-${d.group} | U-${d.landUnit}`; if(!groups[k]) groups[k] = { t: [], a: [] }; groups[k].t.push(d.tradePrice); groups[k].a.push(d.newAssessed); }); }
+            else if (drillLevel === 'unit') { bc += ` / <button onclick="setDrillLevel('office', '${selectedProv}', null)" class="hover:text-gold-neon transition">${selectedProv}</button> / <span class="text-orange-bright">${selectedOffice}</span>`; filteredData.filter(d=>d.province===selectedProv && d.office===selectedOffice).forEach(d => { const k = `G-${d.group} | U-${d.landUnit}`; if(!groups[k]) groups[k] = { t: [], a: [] }; groups[k].t.push(d.tradePrice); groups[k].a.push(d.newAssessed); }); }
             document.getElementById('breadcrumb').innerHTML = bc;
             drillData = Object.keys(groups).map(k => ({ label: k, trade: calcMedian(groups[k].t), assessed: calcMedian(groups[k].a) })).sort((a,b)=>a.label.localeCompare(b.label));
             if(charts.dPrice) charts.dPrice.destroy();
-            charts.dPrice = new Chart(document.getElementById('drillPriceChart').getContext('2d'), { type: 'bar', data: { labels: drillData.map(d=>d.label), datasets: [{ label: 'มัธยฐาน ประเมินใหม่', data: drillData.map(d=>d.assessed), backgroundColor: '#D4AF37' }, { label: 'มัธยฐาน ซื้อขาย', data: drillData.map(d=>d.trade), backgroundColor: '#F97316' }] }, options: { responsive: true, maintainAspectRatio: false, onClick: (e, el) => { if (el.length) { const L = charts.dPrice.data.labels[el[0].index]; if (drillLevel === 'province') setDrillLevel('office', L, null); else if (drillLevel === 'office') setDrillLevel('unit', selectedProv, L); } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#1e293b' } } } } });
+            charts.dPrice = new Chart(document.getElementById('drillPriceChart').getContext('2d'), { type: 'bar', data: { labels: drillData.map(d=>d.label), datasets: [{ label: 'มัธยฐาน ราคาประเมินใหม่', data: drillData.map(d=>d.assessed), backgroundColor: '#D4AF37' }, { label: 'มัธยฐาน ราคาซื้อขาย', data: drillData.map(d=>d.trade), backgroundColor: '#F97316' }] }, options: { responsive: true, maintainAspectRatio: false, onClick: (e, el) => { if (el.length) { const L = charts.dPrice.data.labels[el[0].index]; if (drillLevel === 'province') setDrillLevel('office', L, null); else if (drillLevel === 'office') setDrillLevel('unit', selectedProv, L); } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#1e293b' } } } } });
         }
 
         async function updateMap() {
@@ -293,7 +292,7 @@
             const pg = {}; filteredData.forEach(d => { const e = thaiToEngProv[d.province] || d.province; if(!pg[e]) pg[e] = []; pg[e].push(d.pctDiff); });
             const mapD = Object.keys(pg).map(k => ({ name: k, value: calcAcc(calcMedian(pg[k])) }));
             if(!window.thGeoJson) { const res = await fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json'); window.thGeoJson = await res.json(); echarts.registerMap('TH', window.thGeoJson); }
-            mapInstance.setOption({ backgroundColor: 'transparent', tooltip: { formatter: p => p.value ? `<span style="color:black">${p.name}<br/><b>ความใกล้เคียง: ${p.value.toFixed(2)}%</b></span>` : `<span style="color:black">${p.name}<br/>ไม่มีข้อมูล</span>` }, visualMap: { left: 'right', top: 'bottom', min: 0, max: 100, textStyle: { color: '#e2e8f0' }, calculable: true, inRange: { color: ['#FF007A', '#FFD700', '#00E5FF'] } }, series: [{ name: 'TH', type: 'map', map: 'TH', roam: true, itemStyle: { areaColor: '#0A162C', borderColor: '#D4AF37', borderWidth: 0.5 }, emphasis: { itemStyle: { areaColor: '#D4AF37' }, label: { color: '#040B16', fontWeight: 'bold' } }, data: mapD }] });
+            mapInstance.setOption({ backgroundColor: 'transparent', tooltip: { formatter: p => p.value ? `<span style="color:black">${p.name}<br/><b>ความใกล้เคียง: ${p.value.toFixed(2)}%</b></span>` : `<span style="color:black">${p.name}<br/>ไม่มีข้อมูล</span>` }, visualMap: { left: 'right', top: 'bottom', min: 0, max: 100, text: ['สูง', 'ต่ำ'], textStyle: { color: '#e2e8f0' }, calculable: true, inRange: { color: ['#FF007A', '#FFD700', '#00E5FF'] } }, series: [{ name: 'TH', type: 'map', map: 'TH', roam: true, itemStyle: { areaColor: '#0A162C', borderColor: '#D4AF37', borderWidth: 0.5 }, emphasis: { itemStyle: { areaColor: '#D4AF37' }, label: { color: '#040B16', fontWeight: 'bold' } }, data: mapD }] });
         }
 
         function updateTable() {
@@ -309,7 +308,7 @@
                 <tr class="hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
                     <td class="px-4 py-3">${d.province}</td>
                     <td class="px-4 py-3">${d.office}</td>
-                    <td class="px-4 py-3 font-bold text-gold">${d.group}</td>
+                    <td class="px-4 py-3 text-gold font-bold">${d.group}</td>
                     <td class="px-4 py-3 font-bold text-slate-100">${d.landUnit}</td>
                     <td class="px-4 py-3 text-right font-mono">${fmt(d.tradePrice)}</td>
                     <td class="px-4 py-3 text-right font-mono text-slate-100">${fmt(d.newAssessed)}</td>
