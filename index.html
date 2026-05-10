@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Dashboard - Dark Gold Orange Edition</title>
+    <title>Executive Dashboard - Full Analytics Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
@@ -30,7 +30,7 @@
         .sidebar { background: linear-gradient(180deg, #020612 0%, #071122 100%); border-right: 1px solid rgba(212, 175, 55, 0.2); }
         .chart-container { position: relative; width: 100%; }
         .gauge-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; align-items: flex-end; }
-        .map-container { position: relative; width: 100%; min-height: 600px; }
+        .map-container { position: relative; width: 100%; min-height: 550px; }
         .gauge-text { position: absolute; bottom: -5px; text-align: center; width: 100%; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #040B16; }
@@ -49,7 +49,7 @@
         <aside class="sidebar w-full lg:w-72 p-6 shrink-0 z-10">
             <div class="flex items-center space-x-3 mb-8 pb-4 border-b border-gold/30">
                 <div class="bg-gold p-2 rounded-lg"><span class="text-xl text-darkbg font-black">AI</span></div>
-                <h2 class="text-lg font-bold tracking-tight text-gold-neon uppercase">Dashboard</h2>
+                <h2 class="text-lg font-bold tracking-tight text-gold-neon uppercase tracking-widest">Analytics</h2>
             </div>
             <div class="space-y-5">
                 <div><label class="block text-xs font-bold text-slate-400 uppercase mb-2">1. จังหวัด</label>
@@ -67,15 +67,20 @@
         </aside>
 
         <main class="flex-1 p-6 lg:p-8 overflow-x-hidden">
-            <header class="mb-8 border-b border-slate-800 pb-4">
-                <h1 class="text-3xl font-black text-white tracking-tight">สรุป <span class="text-orange-bright">เปอร์เซ็นต์ความแตกต่าง</span> จากราคาตลาด</h1>
-                <p class="text-slate-400 font-medium mt-1">วิเคราะห์เปรียบเทียบราคาประเมินใหม่ และราคาซื้อขายจริง</p>
+            <header class="mb-8 border-b border-slate-800 pb-4 flex justify-between items-end">
+                <div>
+                    <h1 class="text-3xl font-black text-white tracking-tight">สรุป <span class="text-orange-bright">ความแตกต่าง</span> ราคาตลาด</h1>
+                    <p class="text-slate-400 font-medium mt-1">วิเคราะห์เปรียบเทียบราคาประเมินใหม่ และราคาซื้อขายจริง</p>
+                </div>
+                <div class="text-right hidden md:block">
+                    <p class="text-[10px] text-gold font-bold uppercase tracking-widest">Dashboard System v5.2</p>
+                    <p id="currentTime" class="text-xs text-slate-500 font-mono"></p>
+                </div>
             </header>
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
                 <div class="card p-6 flex flex-col justify-center border-t-4 border-t-orange-bright">
                     <h4 class="font-bold text-center mb-2 text-white uppercase tracking-wider">% ความแตกต่างจากราคาตลาด</h4>
-                    <p class="text-center text-xs text-slate-400 mb-4">ค่าที่แสดงคือเปอร์เซ็นต์ส่วนต่างโดยเฉลี่ย</p>
                     <div class="flex justify-around items-end">
                         <div class="w-1/2 gauge-container">
                             <canvas id="gaugeMean"></canvas>
@@ -97,13 +102,11 @@
                 <div class="flex flex-col gap-8 lg:col-span-1">
                     <div class="card p-5 border-t-4 border-cyan-neon flex-1">
                         <h4 class="font-bold text-base mb-1 text-cyan-neon uppercase">🏆 Top 10 ใกล้เคียงตลาดที่สุด</h4>
-                        <p class="text-[10px] text-slate-400 mb-3">(ส่วนต่างน้อยที่สุด)</p>
-                        <div class="chart-container" style="height: 250px;"><canvas id="top10Chart"></canvas></div>
+                        <div class="chart-container" style="height: 240px;"><canvas id="top10Chart"></canvas></div>
                     </div>
                     <div class="card p-5 border-t-4 border-orange-bright flex-1">
                         <h4 class="font-bold text-base mb-1 text-orange-bright uppercase">⚠️ Bottom 10 ห่างจากตลาดที่สุด</h4>
-                        <p class="text-[10px] text-slate-400 mb-3">(ส่วนต่างมากที่สุด)</p>
-                        <div class="chart-container" style="height: 250px;"><canvas id="bottom10Chart"></canvas></div>
+                        <div class="chart-container" style="height: 240px;"><canvas id="bottom10Chart"></canvas></div>
                     </div>
                 </div>
                 <div class="card p-6 lg:col-span-2 relative flex flex-col">
@@ -112,25 +115,16 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 mb-8">
-                <div class="xl:col-span-8 card p-6">
+            <div class="grid grid-cols-1 gap-8 mb-8">
+                <div class="card p-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                         <div>
-                            <h4 class="font-bold text-xl text-white border-l-4 border-orange-bright pl-3 uppercase">วิเคราะห์เปรียบเทียบราคาเจาะลึก</h4>
-                            <p class="text-xs text-gold-neon ml-4 mt-1">🖱️ คลิกเพื่อเจาะลึก: จังหวัด ➡ สำนักงาน ➡ กลุ่ม/หน่วยที่ดิน</p>
+                            <h4 class="font-bold text-xl text-white border-l-4 border-orange-bright pl-3 uppercase tracking-tight">วิเคราะห์เปรียบเทียบราคาประเมินและราคาซื้อขายเจาะลึก</h4>
+                            <p class="text-xs text-gold-neon ml-4 mt-1">🖱️ คลิกที่แท่งกราฟเพื่อเจาะลึก: จังหวัด ➡ สำนักงาน ➡ กลุ่ม/หน่วยที่ดิน</p>
                         </div>
                         <div id="breadcrumb" class="mt-4 md:mt-0 flex space-x-2 text-sm font-bold bg-[#040B16] border border-gold/30 p-2 rounded-lg text-slate-300"></div>
                     </div>
-                    <div class="clickable-chart chart-container" style="height: 450px;"><canvas id="drillPriceChart"></canvas></div>
-                </div>
-                <div class="xl:col-span-4 flex flex-col gap-4">
-                    <div class="bg-gradient-to-br from-darkcard to-darkbg p-6 rounded-2xl border border-orange-bright/20 h-full flex flex-col justify-center text-center">
-                        <span class="text-5xl mb-4">💡</span>
-                        <h5 class="text-gold-neon font-bold text-lg mb-2 uppercase">Land Insights</h5>
-                        <p class="text-slate-400 text-sm leading-relaxed">
-                            กราฟทางซ้ายแสดงการเปรียบเทียบระหว่าง <br><span class="text-gold font-bold">ราคาประเมินใหม่</span> และ <span class="text-orange-bright font-bold">ราคาซื้อขายจริง</span> <br>เพื่อหาความสอดคล้องเชิงสถิติในแต่ละระดับพื้นที่
-                        </p>
-                    </div>
+                    <div class="clickable-chart chart-container" style="height: 500px;"><canvas id="drillPriceChart"></canvas></div>
                 </div>
             </div>
 
@@ -204,22 +198,17 @@
         function updateFilterOptions(source) {
             const getVal = id => document.getElementById(id).value;
             const p = getVal('provinceFilter'), o = getVal('officeFilter'), g = getVal('groupFilter'), u = getVal('unitFilter');
-            const filteredForP = rawData;
-            const filteredForO = rawData.filter(d => p==='all' || d.province===p);
-            const filteredForG = filteredForO.filter(d => o==='all' || d.office===o);
-            const filteredForU = filteredForG.filter(d => g==='all' || d.group===g);
-            const filteredForT = filteredForU.filter(d => u==='all' || d.landUnit===u);
             const getUnq = (data, key) => [...new Set(data.map(d => d[key]))].filter(v=>v!=="-").sort();
             const updateSelect = (id, optionsList, currVal) => {
                 const el = document.getElementById(id);
                 el.innerHTML = `<option value="all">ทั้งหมด</option>` + optionsList.map(v => `<option value="${v}">${v}</option>`).join('');
                 if (optionsList.includes(currVal)) el.value = currVal; 
             };
-            if(['init'].includes(source)) updateSelect('provinceFilter', getUnq(filteredForP, 'province'), p);
-            if(['init', 'province'].includes(source)) updateSelect('officeFilter', getUnq(filteredForO, 'office'), o);
-            if(['init', 'province', 'office'].includes(source)) updateSelect('groupFilter', getUnq(filteredForG, 'group'), g);
-            if(['init', 'province', 'office', 'group'].includes(source)) updateSelect('unitFilter', getUnq(filteredForU, 'landUnit'), u);
-            if(['init', 'province', 'office', 'group', 'unit'].includes(source)) updateSelect('typeFilter', getUnq(filteredForT, 'type'), getVal('typeFilter'));
+            if(['init'].includes(source)) updateSelect('provinceFilter', getUnq(rawData, 'province'), p);
+            if(['init', 'province'].includes(source)) updateSelect('officeFilter', getUnq(rawData.filter(d=>p==='all'||d.province===p), 'office'), o);
+            if(['init', 'province', 'office'].includes(source)) updateSelect('groupFilter', getUnq(rawData.filter(d=>(p==='all'||d.province===p)&&(o==='all'||d.office===o)), 'group'), g);
+            if(['init', 'province', 'office', 'group'].includes(source)) updateSelect('unitFilter', getUnq(rawData.filter(d=>(p==='all'||d.province===p)&&(o==='all'||d.office===o)&&(g==='all'||d.group===g)), 'landUnit'), u);
+            if(['init', 'province', 'office', 'group', 'unit'].includes(source)) updateSelect('typeFilter', getUnq(rawData.filter(d=>(p==='all'||d.province===p)&&(o==='all'||d.office===o)&&(g==='all'||d.group===g)&&(u==='all'||d.landUnit===u)), 'type'), document.getElementById('typeFilter').value);
         }
 
         function filterChanged(source) {
@@ -272,7 +261,7 @@
                 { l: "Mean AS Ratio", v: calcMean(ratios).toFixed(4), c: "text-cyan-neon" },
                 { l: "Med AS Ratio", v: calcMedian(ratios).toFixed(4), c: "text-white" }
             ].map(k => `<div class="bg-gradient-to-br from-[#0A162C] to-[#040B16] p-3 rounded-lg border border-gold/20"><p class="text-[10px] text-slate-400 uppercase font-bold">${k.l}</p><p class="text-lg font-black ${k.c}">${k.v}</p></div>`).join('');
-            document.getElementById('recordCount').textContent = `Total: ${fmt(filteredData.length)}`;
+            document.getElementById('recordCount').textContent = `Total Records: ${fmt(filteredData.length)}`;
         }
 
         function updateGauges() {
@@ -284,7 +273,6 @@
             const createGauge = (ctxId, val, chartKey) => {
                 if(charts[chartKey]) charts[chartKey].destroy();
                 const ctx = document.getElementById(ctxId).getContext('2d');
-                // แสดงผลส่วนต่าง ยิ่งน้อยยิ่งเขียว ยิ่งมากยิ่งส้ม/แดง
                 let color = Math.abs(val) < 10 ? '#00E5FF' : (Math.abs(val) < 25 ? '#FFD700' : '#F97316');
                 charts[chartKey] = new Chart(ctx, {
                     type: 'doughnut',
@@ -328,7 +316,7 @@
                 filteredData.filter(d => d.province === selectedProv).forEach(d => { if(!groups[d.office]) groups[d.office] = { t: [], a: [], d: [], r: [] }; groups[d.office].t.push(d.tradePrice); groups[d.office].a.push(d.newAssessed); groups[d.office].d.push(d.pctDiff); groups[d.office].r.push(d.asRatio); });
             } else if (drillLevel === 'unit') {
                 bcHtml += ` <span class="text-slate-600">/</span> <button onclick="setDrillLevel('office', '${selectedProv}', null)" class="hover:text-gold-neon transition">${selectedProv}</button> <span class="text-slate-600">/</span> <span class="text-orange-bright">${selectedOffice}</span>`;
-                filteredData.filter(d => d.province === selectedProv && d.office === selectedOffice).forEach(d => { const k = `กลุ่ม ${d.group} | U-${d.landUnit}`; if(!groups[k]) groups[k] = { t: [], a: [], d: [], r: [] }; groups[k].t.push(d.tradePrice); groups[k].a.push(d.newAssessed); groups[k].d.push(d.pctDiff); groups[k].r.push(d.asRatio); });
+                filteredData.filter(d => d.province === selectedProv && d.office === selectedOffice).forEach(d => { const k = `G-${d.group} | U-${d.landUnit}`; if(!groups[k]) groups[k] = { t: [], a: [], d: [], r: [] }; groups[k].t.push(d.tradePrice); groups[k].a.push(d.newAssessed); groups[k].d.push(d.pctDiff); groups[k].r.push(d.asRatio); });
             }
             document.getElementById('breadcrumb').innerHTML = bcHtml;
             drillData = Object.keys(groups).map(k => ({ label: k, trade: calcMedian(groups[k].t), assessed: calcMedian(groups[k].a), diff: calcMedian(groups[k].d), as: calcMedian(groups[k].r) })).sort((a,b) => a.label.localeCompare(b.label));
@@ -337,12 +325,11 @@
 
         function updateDrillCharts() {
             if (charts.dPrice) charts.dPrice.destroy();
-            const ctx = document.getElementById('drillPriceChart').getContext('2d');
-            charts.dPrice = new Chart(ctx, {
+            charts.dPrice = new Chart(document.getElementById('drillPriceChart').getContext('2d'), {
                 type: 'bar',
                 data: { labels: drillData.map(d=>d.label), datasets: [
                     { label: 'มัธยฐาน ราคาประเมินใหม่', data: drillData.map(d=>d.assessed), backgroundColor: '#D4AF37' },
-                    { label: 'มัธยฐาน ราคาซื้อขาย', data: drillData.map(d=>d.trade), backgroundColor: '#F97316' } // เปลี่ยนเป็นสีส้มสว่าง
+                    { label: 'มัธยฐาน ราคาซื้อขาย', data: drillData.map(d=>d.trade), backgroundColor: '#F97316' }
                 ]},
                 options: { 
                     responsive: true, maintainAspectRatio: false, 
@@ -378,7 +365,12 @@
                 </tr>`).join('');
         }
 
-        window.onload = init;
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').innerText = now.toLocaleString('th-TH');
+        }
+
+        window.onload = () => { init(); setInterval(updateTime, 1000); };
         window.onresize = () => { if(mapInstance) mapInstance.resize(); };
     </script>
 </body>
